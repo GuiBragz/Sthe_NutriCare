@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { criarAgendamento } from './controllers/AgendamentoController';
 import { criarUsuario, login } from './controllers/UsuarioController'; // <--- ATENÇÃO AQUI: Importe o login
 
 const app = express();
@@ -13,7 +14,8 @@ app.get('/', (req, res) => {
 
 // --- ROTAS ---
 app.post('/usuarios', criarUsuario);
-app.post('/login', login); // <--- NOVA ROTA
+app.post('/login', login);
+app.post('/agendamentos', criarAgendamento); // <--- NOVA ROTA AQUI
 
 const PORT = 3000;
 app.listen(PORT, () => {
