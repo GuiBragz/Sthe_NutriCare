@@ -1,0 +1,113 @@
+// Isso define que vamos usar Javascript/Typescript e MySQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// --- TABELAS DO SISTEMA ---
+
+model Usuario {
+  id              Int      @id @default(autoincrement())
+  nomeCompleto    String
+  email           String   @unique
+  senha           String
+  tipo            TipoUsuario @default(PACIENTE)
+  telefone        String?
+  fotoPerfilUrl   String?
+  dataCriacao     DateTime @default(now())
+
+  // Relacionamentos
+  agendamentos    Agendamento[]
+  metas           MetaSaude?
+  diarios         DiarioDiario[]
+  planos          PlanoNutricional[]
+
+  @@map("tb_usuarios")
+}
+
+model MetaSaude {
+  id                 Int     @id @default(autoincrement())
+  usuarioId          Int     @unique // Um usuario só tem uma meta ativa
+  usuario            Usuario @relation(fields: [usuarioId], references: [id])
+  pesoAtual          Float
+  pesoMeta           Float
+  altura             Float // em cm
+  metaCaloricaDiaria Int // ex: 2000 kcal
+  metaAguaDiaria     Int // ex: 2500 ml
+
+  @@map("tb_metas_saude")
+}
+
+model Agendamento {
+  id               Int      @id @default(autoincrement())
+  usuarioId        Int
+  usuario          Usuario  @relation(fields: [usuarioId], references: [id])
+  dataHoraConsulta DateTime
+  valorPago        Decimal  @db.Decimal(10, 2)
+  formaPagamento   FormaPagamento
+  status           StatusAgendamento @default(AGUARDANDO_PAGAMENTO)
+  observacoes      String?
+
+  @@map("tb_agendamentos")
+}
+
+model PlanoNutricional {
+  id          Int      @id @default(autoincrement())
+  usuarioId   Int
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  titulo      String
+  arquivoUrl  String?  // Link do PDF
+  descricao   String?  // Texto se não tiver PDF
+  dataUpload  DateTime @default(now())
+
+  @@map("tb_planos_nutricionais")
+}
+
+model Receita {
+  id             Int    @id @default(autoincrement())
+  titulo         String
+  ingredientes   String @db.Text
+  modoPreparo    String @db.Text
+  caloriasTotais Int
+  fotoUrl        String?
+  categoria      String // ex: "Cafe da Manha"
+
+  @@map("tb_receitas")
+}
+
+model DiarioDiario {
+  id                 Int      @id @default(autoincrement())
+  usuarioId          Int
+  usuario            Usuario  @relation(fields: [usuarioId], references: [id])
+  dataRegistro       DateTime @default(now())
+  caloriasConsumidas Int
+  caloriasQueimadas  Int
+  aguaConsumida      Int      // em ml
+  observacoesDia     String?
+
+  @@map("tb_diario_diario")
+}
+
+// --- ENUMS (Opções fixas) ---
+
+enum TipoUsuario {
+  ADMIN
+  PACIENTE
+}
+
+enum FormaPagamento {
+  PIX
+  CARTAO
+}
+
+enum StatusAgendamento {
+  AGUARDANDO_PAGAMENTO
+  CONFIRMADO
+  REALIZADO
+  CANCELADO_COM_CREDITO // O pulo do gato financeiro
+  CANCELADO
+}
