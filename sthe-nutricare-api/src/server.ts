@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { criarAgendamento } from './controllers/AgendamentoController';
-import { criarUsuario, login } from './controllers/UsuarioController'; // <--- ATENÇÃO AQUI: Importe o login
+import { criarUsuario, login } from './controllers/UsuarioController';
+
+// AQUI ESTAVA O ERRO: Deixe apenas esta linha completa abaixo
+import { criarAgendamento, buscarProximaConsulta, cancelarAgendamento } from './controllers/AgendamentoController';
 
 const app = express();
 
@@ -15,7 +17,11 @@ app.get('/', (req, res) => {
 // --- ROTAS ---
 app.post('/usuarios', criarUsuario);
 app.post('/login', login);
-app.post('/agendamentos', criarAgendamento); // <--- NOVA ROTA AQUI
+
+// Rotas de Agendamento
+app.post('/agendamentos', criarAgendamento);
+app.get('/agendamentos/:usuarioId', buscarProximaConsulta);
+app.patch('/agendamentos/:id/cancelar', cancelarAgendamento);
 
 const PORT = 3000;
 app.listen(PORT, () => {

@@ -4,71 +4,104 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 
 // ⚠️ ATENÇÃO: Confirme se o IP é o mesmo do App.tsx
+// Se mudou o IP do computador hoje, atualize aqui também!
 const API_URL = 'http://192.168.1.3:3000/agendamentos';
 
 export function Agendamento({ route, navigation }: any) {
-  // Recebe o ID do usuário que veio da Home
   const { usuarioId } = route.params;
 
   const [dataConsulta, setDataConsulta] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [pagamento, setPagamento] = useState('PIX'); // Padrão
+  const [mode, setMode] = useState<'date' | 'time'>('date'); 
+  const [pagamento, setPagamento] = useState('PIX');
   const [loading, setLoading] = useState(false);
 
-  // Função para mudar a data selecionada
-  const onChangeDate = (event: any, selectedDate?: Date) => {
-    setShowPicker(false);
+  // Lógica para salvar a data/hora escolhida
+  const onChange = (event: any, selectedDate?: Date) => {
+    setShowPicker(false); // Fecha o relógio/calendário
+    
     if (selectedDate) {
+      // Se estamos no Android, o comportamento padrão é substituir.
+      // Vamos garantir que a data atualize corretamente.
       setDataConsulta(selectedDate);
     }
+  };
+
+  // Função para abrir o Calendário
+  const showDatepicker = () => {
+    setMode('date');
+    setShowPicker(true);
+  };
+
+  // Função para abrir o Relógio
+  const showTimepicker = () => {
+    setMode('time');
+    setShowPicker(true);
   };
 
   async function handleAgendar() {
     setLoading(true);
     try {
-      // Envia para o Backend
+      console.log("Enviando:", dataConsulta.toISOString());
+      
       await axios.post(API_URL, {
         usuarioId: usuarioId,
-        dataHora: dataConsulta.toISOString(), // Manda no formato universal
+        dataHora: dataConsulta.toISOString(),
         formaPagamento: pagamento
       });
 
-      Alert.alert('Sucesso! 🎉', 'Agendamento pré-reservado. Realize o pagamento para confirmar.');
-      navigation.goBack(); // Volta pra Home
+      Alert.alert('Sucesso! 🎉', 'Agendamento realizado.');
+      navigation.goBack(); 
 
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível agendar. Tente outro horário.');
+      Alert.alert('Erro', 'Não foi possível agendar. Verifique a conexão.');
     } finally {
       setLoading(false);
     }
   }
 
+  // Formatação para exibir na tela (Pt-BR)
+  const diaFormatado = dataConsulta.toLocaleDateString('pt-BR');
+  const horaFormatada = dataConsulta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Nova Consulta 📅</Text>
 
-      <Text style={styles.label}>Escolha a Data e Hora:</Text>
+      <Text style={styles.label}>1. Escolha a Data e o Horário:</Text>
       
-      {/* Botão que abre o calendário */}
-      <TouchableOpacity style={styles.dateButton} onPress={() => setShowPicker(true)}>
-        <Text style={styles.dateText}>
-          {dataConsulta.toLocaleString('pt-BR')}
-        </Text>
-      </TouchableOpacity>
+      {/* --- SEPARAÇÃO CLARA DOS BOTÕES --- */}
+      <View style={styles.row}>
+        
+        {/* BOTÃO DATA */}
+        <TouchableOpacity style={styles.selectorButton} onPress={showDatepicker}>
+          <Text style={styles.selectorLabel}>DIA</Text>
+          <Text style={styles.selectorValue}>{diaFormatado}</Text>
+        </TouchableOpacity>
 
-      {/* O componente do calendário (só aparece quando clica, no Android) */}
+        {/* BOTÃO HORA */}
+        <TouchableOpacity style={styles.selectorButton} onPress={showTimepicker}>
+          <Text style={styles.selectorLabel}>HORA</Text>
+          <Text style={styles.selectorValue}>{horaFormatada}</Text>
+        </TouchableOpacity>
+
+      </View>
+
+      {/* Componente Invisível (Popup) */}
       {showPicker && (
         <DateTimePicker
+          testID="dateTimePicker"
           value={dataConsulta}
-          mode="date" // ou "time" para hora. No iOS aparece os dois juntos as vezes.
+          mode={mode} // <--- Aqui ele alterna entre 'date' e 'time'
+          is24Hour={true}
           display="default"
-          onChange={onChangeDate}
-          minimumDate={new Date()} // Não deixa agendar no passado
+          onChange={onChange}
+          minimumDate={new Date()}
         />
       )}
 
-      <Text style={[styles.label, { marginTop: 20 }]}>Forma de Pagamento:</Text>
-      <View style={styles.paymentContainer}>
+      <Text style={[styles.label, { marginTop: 30 }]}>2. Forma de Pagamento:</Text>
+      <View style={styles.row}>
         <TouchableOpacity 
           style={[styles.payButton, pagamento === 'PIX' && styles.payButtonSelected]}
           onPress={() => setPagamento('PIX')}
@@ -94,13 +127,27 @@ export function Agendamento({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121214', padding: 24 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFF', marginBottom: 30, textAlign: 'center' },
-  label: { color: '#E1E1E6', fontSize: 16, marginBottom: 8 },
-  dateButton: { backgroundColor: '#202024', padding: 16, borderRadius: 8, borderWidth: 1, borderColor: '#323238' },
-  dateText: { color: '#FFF', fontSize: 16, textAlign: 'center' },
-  paymentContainer: { flexDirection: 'row', gap: 10 },
+  label: { color: '#E1E1E6', fontSize: 16, marginBottom: 10 },
+  
+  // Estilo novo para ficar um do lado do outro
+  row: { flexDirection: 'row', gap: 15, marginBottom: 10 },
+  
+  selectorButton: { 
+    flex: 1, 
+    backgroundColor: '#202024', 
+    padding: 15, 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: '#323238',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  selectorLabel: { color: '#04D361', fontSize: 12, fontWeight: 'bold', marginBottom: 5 },
+  selectorValue: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+
   payButton: { flex: 1, padding: 16, backgroundColor: '#202024', borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#323238' },
   payButtonSelected: { borderColor: '#04D361', backgroundColor: '#00291D' },
   payText: { color: '#FFF', fontWeight: 'bold' },
-  confirmButton: { marginTop: 40, backgroundColor: '#04D361', padding: 16, borderRadius: 8, alignItems: 'center' },
+  confirmButton: { marginTop: 'auto', backgroundColor: '#04D361', padding: 16, borderRadius: 8, alignItems: 'center', marginBottom: 20 },
   confirmText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });
