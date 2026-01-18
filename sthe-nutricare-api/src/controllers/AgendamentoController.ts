@@ -97,3 +97,23 @@ export const cancelarAgendamento = async (req: Request, res: Response) => {
     return res.status(500).json({ erro: 'Erro ao cancelar agendamento.' });
   }
 };
+// 4. LISTAR HISTÓRICO COMPLETO
+export const listarHistorico = async (req: Request, res: Response) => {
+  try {
+    const { usuarioId } = req.params;
+
+    const lista = await prisma.agendamento.findMany({
+      where: {
+        usuarioId: Number(usuarioId)
+      },
+      orderBy: {
+        dataHoraConsulta: 'desc' // 'desc' = Do mais novo para o mais antigo
+      }
+    });
+
+    return res.json(lista);
+
+  } catch (error) {
+    return res.status(500).json({ erro: 'Erro ao buscar histórico.' });
+  }
+};

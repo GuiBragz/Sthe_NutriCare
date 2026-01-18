@@ -1,92 +1,54 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import axios from 'axios';
-import { Agendamento } from './src/screens/Agendamento';
-import { Home } from './src/screens/Home'; 
+import { StatusBar } from 'react-native';
 
-// ⚠️ CONFIRA SE O SEU IP CONTINUA O MESMO
-const API_URL = 'http://192.168.1.3:3000/login'; 
+// --- IMPORTAÇÃO DAS TELAS ---
+// Agora importamos todas de seus arquivos separados
+import { Welcome } from './src/screens/Welcome'; // A tela nova de Boas-vindas
+import { Login } from './src/screens/Login';     // A tela nova de Login
+import { Home } from './src/screens/Home';
+import { Agendamento } from './src/screens/Agendamento';
+import { Historico } from './src/screens/Historico';
+import { CadastroStep1 } from './src/screens/CadastroStep1';
+import { CadastroStep2 } from './src/screens/CadastroStep2';
 
 const Stack = createNativeStackNavigator();
 
-// --- TELA DE LOGIN (Componente) ---
-function LoginScreen({ navigation }: any) {
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function handleLogin() {
-    if (!email || !senha) return Alert.alert('Erro', 'Preencha tudo!');
-    
-    setLoading(true);
-    try {
-      const response = await axios.post(API_URL, { email, senha });
-      
-      // SUCESSO! Navega para a Home e leva o nome do usuário junto
-      navigation.navigate('Home', { 
-        nome: response.data.usuario.nome, // <--- Vírgula adicionada aqui!
-        id: response.data.usuario.id
-      });
-
-    } catch (error: any) {
-      Alert.alert('Erro', 'Email ou senha inválidos');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sthe NutriCare 🍎</Text>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>E-mail</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="admin@sthe.com" 
-          placeholderTextColor="#999"
-          value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address"
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Senha</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="***" 
-          placeholderTextColor="#999"
-          secureTextEntry value={senha} onChangeText={setSenha} 
-        />
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>ENTRAR</Text>}
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// --- APP PRINCIPAL (Rotas) ---
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
+      {/* StatusBar Transparente:
+         Isso faz o gradiente da tela Welcome ir até o topo da tela, 
+         ficando atrás da hora/bateria do celular. Fica muito mais moderno!
+      */}
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="transparent" 
+        translucent 
+      />
+      
+      <Stack.Navigator 
+        initialRouteName="Welcome" // <--- O App começa na tela de Boas-vindas
+        screenOptions={{ 
+          headerShown: false, // Esconde a barra de título padrão em tudo
+          animation: 'slide_from_right' // Animação suave entre telas
+        }}
+      >
+        <Stack.Screen name="CadastroStep1" component={CadastroStep1} />
+        <Stack.Screen name="CadastroStep2" component={CadastroStep2} />
+        {/* 1. Tela Inicial (Botão Entrar grande) */}
+        <Stack.Screen name="Welcome" component={Welcome} />
+        
+        {/* 2. Tela de Login (Formulário) */}
+        <Stack.Screen name="Login" component={Login} />
+        
+        {/* 3. Área Logada */}
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="Agendamento" component={Agendamento} />
+        <Stack.Screen name="Historico" component={Historico} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121214', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#04D361', marginBottom: 40 },
-  inputContainer: { width: '100%', marginBottom: 16 },
-  label: { color: '#E1E1E6', marginBottom: 8, fontSize: 14 },
-  input: { width: '100%', height: 56, backgroundColor: '#202024', borderRadius: 8, paddingHorizontal: 16, color: '#FFF', borderWidth: 1, borderColor: '#323238' },
-  button: { width: '100%', height: 56, backgroundColor: '#04D361', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
-  buttonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }
-});

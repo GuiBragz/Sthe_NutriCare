@@ -3,7 +3,7 @@ import cors from 'cors';
 import { criarUsuario, login } from './controllers/UsuarioController';
 
 // AQUI ESTAVA O ERRO: Deixe apenas esta linha completa abaixo
-import { criarAgendamento, buscarProximaConsulta, cancelarAgendamento } from './controllers/AgendamentoController';
+import { criarAgendamento, buscarProximaConsulta, cancelarAgendamento, listarHistorico } from './controllers/AgendamentoController';
 
 const app = express();
 
@@ -22,6 +22,7 @@ app.post('/login', login);
 app.post('/agendamentos', criarAgendamento);
 app.get('/agendamentos/:usuarioId', buscarProximaConsulta);
 app.patch('/agendamentos/:id/cancelar', cancelarAgendamento);
+app.get('/agendamentos/:usuarioId/historico', listarHistorico);
 
 const PORT = 3000;
 app.listen(PORT, () => {

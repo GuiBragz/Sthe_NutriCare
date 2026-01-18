@@ -1,9 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 
-// ⚠️ IMPORTANTE: CONFIRA SE O IP ESTÁ IGUAL AO DO ARQUIVO AGENDAMENTO
+// ⚠️ CONFIRA SEU IP
 const API_URL = 'http://192.168.1.3:3000'; 
 
 export function Home({ route, navigation }: any) {
@@ -11,49 +13,42 @@ export function Home({ route, navigation }: any) {
   const [consulta, setConsulta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Função para buscar dados no backend
+  // Busca dados (igual antes)
   const carregarDados = async () => {
     if (!id) return;
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/agendamentos/${id}`);
-      
-      // Se tiver data, salva no estado. Se não, limpa.
       if (response.data.dataHoraConsulta) {
         setConsulta(response.data);
       } else {
         setConsulta(null);
       }
     } catch (error) {
-      console.log('Erro ao buscar consulta ou nenhuma encontrada.');
       setConsulta(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // useFocusEffect garante que a busca roda toda vez que a tela aparece
   useFocusEffect(
     useCallback(() => {
       carregarDados();
     }, [id])
   );
 
-  // Função de Cancelar
   async function handleCancelar() {
     Alert.alert(
-      "Cancelar Consulta",
-      "Tem certeza que deseja cancelar?",
+      "Cancelar",
+      "Deseja realmente cancelar?",
       [
         { text: "Não", style: "cancel" },
         { 
-          text: "Sim, cancelar", 
-          style: 'destructive',
+          text: "Sim", style: 'destructive',
           onPress: async () => {
             try {
               await axios.patch(`${API_URL}/agendamentos/${consulta.id}/cancelar`);
-              Alert.alert("Cancelado", "Sua consulta foi cancelada.");
-              carregarDados(); // Atualiza a tela
+              carregarDados();
             } catch (error) {
               Alert.alert("Erro", "Não foi possível cancelar.");
             }
@@ -65,71 +60,137 @@ export function Home({ route, navigation }: any) {
 
   const formatarData = (dataISO: string) => {
     const data = new Date(dataISO);
-    return `${data.toLocaleDateString('pt-BR')} às ${data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    return {
+      dia: data.toLocaleDateString('pt-BR'),
+      hora: data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    };
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.greeting}>Olá, {nome}! 👋</Text>
-      <Text style={styles.subtitle}>Seu painel nutricional</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Próxima Consulta</Text>
+    <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
         
-        {loading ? (
-          <ActivityIndicator color="#04D361" />
-        ) : consulta ? (
+        {/* CABEÇALHO */}
+        <View style={styles.header}>
           <View>
-            <Text style={styles.dataDestaque}>
-              {formatarData(consulta.dataHoraConsulta)}
-            </Text>
-            <Text style={styles.statusBadge}>
-              Status: {consulta.status.replace('_', ' ')}
-            </Text>
-
-            {/* Botão de Cancelar (Só aparece se tiver consulta) */}
-            <TouchableOpacity style={styles.buttonCancel} onPress={handleCancelar}>
-              <Text style={styles.buttonCancelText}>Cancelar Agendamento</Text>
-            </TouchableOpacity>
+            <Text style={styles.greeting}>Olá, {nome.split(' ')[0]}! 👋</Text>
+            <Text style={styles.subtitle}>Vamos cuidar de você hoje?</Text>
           </View>
-        ) : (
-          <Text style={styles.cardText}>Nenhuma consulta futura agendada.</Text>
-        )}
-      </View>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.logoutBtn}>
+            <Ionicons name="log-out-outline" size={24} color="#A555B9" />
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity 
-        style={styles.buttonSchedule} 
-        onPress={() => navigation.navigate('Agendamento', { usuarioId: id })}
-      >
-        <Text style={styles.buttonText}>📅 Agendar Nova Consulta</Text>
-      </TouchableOpacity>
+        {/* CARD DE PRÓXIMA CONSULTA */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="calendar" size={24} color="#2F9F85" />
+            <Text style={styles.cardTitle}>PRÓXIMA CONSULTA</Text>
+          </View>
 
-      <TouchableOpacity 
-        style={styles.buttonLogout} 
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.buttonText}>Sair</Text>
-      </TouchableOpacity>
-    </View>
+          {loading ? (
+            <ActivityIndicator color="#A555B9" style={{marginVertical: 20}} />
+          ) : consulta ? (
+            <View style={styles.consultaInfo}>
+              <Text style={styles.dataGrande}>{formatarData(consulta.dataHoraConsulta).dia}</Text>
+              <Text style={styles.horaGrande}>{formatarData(consulta.dataHoraConsulta).hora}</Text>
+              
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>{consulta.status.replace('_', ' ')}</Text>
+              </View>
+
+              <TouchableOpacity style={styles.cancelLink} onPress={handleCancelar}>
+                <Text style={styles.cancelText}>Cancelar agendamento</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>Você não tem consultas agendadas.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* BOTÃO AGENDAR (GRADIENTE) */}
+        <TouchableOpacity 
+          style={styles.actionButtonContainer}
+          onPress={() => navigation.navigate('Agendamento', { usuarioId: id })}
+        >
+          <LinearGradient 
+            colors={['#A555B9', '#2F9F85']} 
+            start={{x:0, y:0}} end={{x:1, y:1}} 
+            style={styles.gradientButton}
+          >
+            <Ionicons name="add-circle-outline" size={24} color="#FFF" style={{marginRight: 10}} />
+            <Text style={styles.buttonText}>AGENDAR NOVA</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* BOTÃO HISTÓRICO (OUTLINE) */}
+        <TouchableOpacity 
+          style={styles.secondaryButton}
+          onPress={() => navigation.navigate('Historico', { usuarioId: id })}
+        >
+          <Ionicons name="time-outline" size={20} color="#A555B9" style={{marginRight: 8}} />
+          <Text style={styles.secondaryButtonText}>VER MEU HISTÓRICO</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+      
+      {/* Rodapé decorativo */}
+      <View style={styles.footerDecoration} /> 
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121214', padding: 24, justifyContent: 'center' },
-  greeting: { color: '#FFF', fontSize: 28, fontWeight: 'bold' },
-  subtitle: { color: '#E1E1E6', fontSize: 16, marginTop: 4, marginBottom: 40 },
-  card: { backgroundColor: '#202024', padding: 20, borderRadius: 8, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#04D361' },
-  cardTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 16, marginBottom: 8 },
-  cardText: { color: '#C4C4CC' },
+  container: { flex: 1 },
+  content: { padding: 24, paddingTop: 60, paddingBottom: 100 },
   
-  // Estilos Dinâmicos
-  dataDestaque: { color: '#FFF', fontSize: 20, fontWeight: 'bold', marginTop: 4 },
-  statusBadge: { color: '#FBA94C', fontSize: 14, marginTop: 4, fontWeight: 'bold', marginBottom: 15 },
-  
-  buttonCancel: { padding: 10, backgroundColor: 'rgba(232, 63, 91, 0.1)', borderRadius: 4, alignItems: 'center', borderWidth: 1, borderColor: '#E83F5B' },
-  buttonCancelText: { color: '#E83F5B', fontWeight: 'bold', fontSize: 14 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 30 },
+  greeting: { fontSize: 28, fontWeight: 'bold', color: '#A555B9' },
+  subtitle: { fontSize: 16, color: '#666' },
+  logoutBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, elevation: 2 },
 
-  buttonSchedule: { marginTop: 10, padding: 15, backgroundColor: '#04D361', borderRadius: 8, alignItems: 'center', marginBottom: 10 },
-  buttonLogout: { marginTop: 10, padding: 15, backgroundColor: '#29292E', borderRadius: 8, alignItems: 'center' },
-  buttonText: { color: '#FFF', fontWeight: 'bold' }
+  // Card Estilo Novo
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 25,
+    // Sombra suave (Android + iOS)
+    elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 10 },
+  cardTitle: { color: '#2F9F85', fontWeight: 'bold', fontSize: 14, marginLeft: 10, letterSpacing: 1 },
+  
+  consultaInfo: { alignItems: 'center' },
+  dataGrande: { fontSize: 32, fontWeight: 'bold', color: '#333' },
+  horaGrande: { fontSize: 18, color: '#666', marginBottom: 15 },
+  
+  badgeContainer: { backgroundColor: '#FFF3E0', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginBottom: 15 },
+  badgeText: { color: '#F57C00', fontWeight: 'bold', fontSize: 12 },
+
+  cancelLink: { padding: 5 },
+  cancelText: { color: '#E83F5B', fontSize: 14 },
+
+  emptyState: { padding: 20, alignItems: 'center' },
+  emptyText: { color: '#999', fontStyle: 'italic' },
+
+  // Botões
+  actionButtonContainer: { marginBottom: 15, elevation: 4 },
+  gradientButton: { 
+    flexDirection: 'row', height: 60, borderRadius: 30, 
+    alignItems: 'center', justifyContent: 'center' 
+  },
+  buttonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+
+  secondaryButton: { 
+    flexDirection: 'row', height: 55, borderRadius: 30, 
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#A555B9', backgroundColor: 'transparent'
+  },
+  secondaryButtonText: { color: '#A555B9', fontWeight: 'bold', fontSize: 14 },
+
+  footerDecoration: { height: 60, width: '100%', opacity: 0.3 }
 });

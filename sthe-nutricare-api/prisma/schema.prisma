@@ -11,14 +11,22 @@ datasource db {
 // --- TABELAS DO SISTEMA ---
 
 model Usuario {
-  id              Int      @id @default(autoincrement())
-  nomeCompleto    String
-  email           String   @unique
-  senha           String
-  tipo            TipoUsuario @default(PACIENTE)
-  telefone        String?
-  fotoPerfilUrl   String?
-  dataCriacao     DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  nomeCompleto  String
+  email         String   @unique
+  senha         String
+  tipo          TipoUsuario @default(PACIENTE)
+  telefone      String?
+  fotoPerfilUrl String?
+  
+  // --- NOVOS CAMPOS DO CADASTRO ---
+  dataNascimento String?
+  sexo           String?   // "M" ou "F"
+  altura         Float?    // ex: 1.75
+  objetivos      String?   // ex: "SAUDE,EMAGRECER"
+  // -------------------------------
+
+  dataCriacao   DateTime @default(now())
 
   // Relacionamentos
   agendamentos    Agendamento[]
@@ -35,7 +43,7 @@ model MetaSaude {
   usuario            Usuario @relation(fields: [usuarioId], references: [id])
   pesoAtual          Float
   pesoMeta           Float
-  altura             Float // em cm
+  // Altura removida daqui pois agora fica no Usuario, ou pode manter como histórico
   metaCaloricaDiaria Int // ex: 2000 kcal
   metaAguaDiaria     Int // ex: 2500 ml
 
@@ -108,6 +116,6 @@ enum StatusAgendamento {
   AGUARDANDO_PAGAMENTO
   CONFIRMADO
   REALIZADO
-  CANCELADO_COM_CREDITO // O pulo do gato financeiro
+  CANCELADO_COM_CREDITO
   CANCELADO
 }

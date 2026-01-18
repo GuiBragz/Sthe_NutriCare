@@ -3,12 +3,21 @@ import { prisma } from '../lib/prisma';
 
 export const criarUsuario = async (req: Request, res: Response) => {
   try {
-    // 1. Recebe os dados que vem do corpo da requisição (JSON)
-    const { nomeCompleto, email, senha } = req.body;
+    // 1. Recebe TODOS os dados vindos do App (Passo 1 + Passo 2)
+    const { 
+      nome,           // Vem do app como 'nome'
+      email, 
+      senha, 
+      telefone, 
+      nascimento,     // Vem do app como 'nascimento'
+      altura, 
+      sexo, 
+      objetivos 
+    } = req.body;
 
-    // 2. Validação simples (depois melhoramos)
-    if (!nomeCompleto || !email || !senha) {
-      return res.status(400).json({ erro: 'Preencha todos os campos!' });
+    // 2. Validação simples dos campos obrigatórios
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ erro: 'Preencha os campos obrigatórios!' });
     }
 
     // 3. Verifica se já existe esse email
@@ -20,13 +29,19 @@ export const criarUsuario = async (req: Request, res: Response) => {
       return res.status(400).json({ erro: 'E-mail já cadastrado.' });
     }
 
-    // 4. Salva no Banco (Prisma faz a mágica)
+    // 4. Salva no Banco (Mapeando os nomes corretamente)
     const novoUsuario = await prisma.usuario.create({
       data: {
-        nomeCompleto,
+        nomeCompleto: nome,       // O banco chama 'nomeCompleto', o app manda 'nome'
         email,
-        senha, // Obs: Em produção, jamais salvamos senha pura (usamos bcrypt), mas pro teste serve.
-        tipo: 'PACIENTE' // Por padrão, todo mundo que se cadastra é paciente
+        senha,
+        telefone,
+        dataNascimento: nascimento, // O banco chama 'dataNascimento'
+        sexo,
+        // Garante que a altura seja salva como número (Float), caso venha como texto
+        altura: altura ? parseFloat(altura) : null, 
+        objetivos, // Já vem como string "SAUDE,EMAGRECER" do app
+        tipo: 'PACIENTE'
       }
     });
 
@@ -38,33 +53,30 @@ export const criarUsuario = async (req: Request, res: Response) => {
         nome: novoUsuario.nomeCompleto,
         email: novoUsuario.email
       }
-
-      
     });
 
-    
   } catch (error) {
+    console.log(error); // Ajuda a ver o erro no terminal se acontecer
     return res.status(500).json({ erro: 'Erro interno no servidor' });
   }
-  
 };
 
+// --- LOGIN (Mantive igual, pois não mudou a lógica) ---
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, senha } = req.body;
 
-    // 1. Busca o usuário no banco
+    // 1. Busca o usuário
     const usuario = await prisma.usuario.findUnique({
       where: { email }
     });
 
-    // 2. Valida se usuário existe e se a senha bate
-    // (Obs: Num app real, usaríamos bcrypt para comparar hash, aqui é texto puro pro MVP)
+    // 2. Valida senha (texto puro pro MVP)
     if (!usuario || usuario.senha !== senha) {
       return res.status(401).json({ erro: 'Email ou senha incorretos' });
     }
 
-    // 3. Sucesso! Retorna os dados
+    // 3. Sucesso!
     return res.json({
       mensagem: 'Login realizado!',
       usuario: {
