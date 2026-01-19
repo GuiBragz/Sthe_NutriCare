@@ -76,8 +76,13 @@ export function Home({ route, navigation }: any) {
             <Text style={styles.greeting}>Olá, {nome.split(' ')[0]}! 👋</Text>
             <Text style={styles.subtitle}>Vamos cuidar de você hoje?</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={24} color="#A555B9" />
+          
+          {/* BOTÃO PERFIL (Mudamos de Log-out para Person) */}
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Perfil', { usuarioId: id })} 
+            style={styles.iconBtn}
+          >
+            <Ionicons name="person-outline" size={24} color="#A555B9" />
           </TouchableOpacity>
         </View>
 
@@ -87,7 +92,7 @@ export function Home({ route, navigation }: any) {
             <Ionicons name="calendar" size={24} color="#2F9F85" />
             <Text style={styles.cardTitle}>PRÓXIMA CONSULTA</Text>
           </View>
-
+          
           {loading ? (
             <ActivityIndicator color="#A555B9" style={{marginVertical: 20}} />
           ) : consulta ? (
@@ -98,7 +103,7 @@ export function Home({ route, navigation }: any) {
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>{consulta.status.replace('_', ' ')}</Text>
               </View>
-
+              
               <TouchableOpacity style={styles.cancelLink} onPress={handleCancelar}>
                 <Text style={styles.cancelText}>Cancelar agendamento</Text>
               </TouchableOpacity>
@@ -110,6 +115,24 @@ export function Home({ route, navigation }: any) {
           )}
         </View>
 
+        {/* --- NOVO BOTÃO: MEU PLANO ALIMENTAR --- */}
+        <TouchableOpacity 
+          style={styles.dietCard}
+          onPress={() => navigation.navigate('PlanoAlimentar', { usuarioId: id })}
+        >
+          <LinearGradient
+            colors={['#FF9966', '#FF5E62']} // Gradiente Laranja/Vermelho
+            start={{x:0, y:0}} end={{x:1, y:1}}
+            style={styles.dietGradient}
+          >
+            <View>
+              <Text style={styles.dietTitle}>MEU PLANO ALIMENTAR</Text>
+              <Text style={styles.dietSub}>Ver o que comer hoje 🍎</Text>
+            </View>
+            <Ionicons name="restaurant-outline" size={32} color="#FFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+        
         {/* BOTÃO AGENDAR (GRADIENTE) */}
         <TouchableOpacity 
           style={styles.actionButtonContainer}
@@ -149,15 +172,14 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 30 },
   greeting: { fontSize: 28, fontWeight: 'bold', color: '#A555B9' },
   subtitle: { fontSize: 16, color: '#666' },
-  logoutBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, elevation: 2 },
+  iconBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, elevation: 2 },
 
   // Card Estilo Novo
   card: {
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 20,
-    marginBottom: 25,
-    // Sombra suave (Android + iOS)
+    marginBottom: 15, // Diminuí um pouco pra caber o botão de dieta
     elevation: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8
   },
@@ -176,6 +198,12 @@ const styles = StyleSheet.create({
 
   emptyState: { padding: 20, alignItems: 'center' },
   emptyText: { color: '#999', fontStyle: 'italic' },
+
+  // --- ESTILOS DO BOTÃO DIETA ---
+  dietCard: { marginBottom: 15, borderRadius: 20, elevation: 4, overflow: 'hidden' },
+  dietGradient: { padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dietTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  dietSub: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
 
   // Botões
   actionButtonContainer: { marginBottom: 15, elevation: 4 },

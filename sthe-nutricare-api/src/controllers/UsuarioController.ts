@@ -91,3 +91,49 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ erro: 'Erro interno no servidor' });
   }
 };
+// ... (mantenha o código de criarUsuario e login que já estão aí) ...
+
+// 👇 ADICIONE ESTA FUNÇÃO NO FINAL DO ARQUIVO 👇
+export const buscarUsuarioPorId = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ erro: 'Usuário não encontrado' });
+    }
+
+    // O pulo do gato: Removemos a senha antes de enviar pro app (segurança!)
+    const { senha, ...dadosUsuario } = usuario;
+
+    return res.json(dadosUsuario);
+  } catch (error) {
+    return res.status(500).json({ erro: 'Erro ao buscar perfil' });
+  }
+};
+export const atualizarUsuario = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // Adicione 'nascimento' aqui na leitura
+    const { nome, telefone, altura, objetivos, sexo, nascimento } = req.body; 
+
+    const usuarioAtualizado = await prisma.usuario.update({
+      where: { id: Number(id) },
+      data: {
+        nomeCompleto: nome,
+        telefone,
+        altura: altura ? parseFloat(altura) : undefined,
+        objetivos,
+        sexo,
+        dataNascimento: nascimento // <--- ATUALIZA AQUI NO BANCO
+      }
+    });
+
+    return res.json(usuarioAtualizado);
+  } catch (error) {
+    return res.status(500).json({ erro: 'Erro ao atualizar perfil' });
+  }
+};

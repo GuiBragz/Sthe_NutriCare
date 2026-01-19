@@ -14,15 +14,27 @@ export function Login({ navigation }: any) {
 
   async function handleLogin() {
     if (!email || !senha) return Alert.alert('Atenção', 'Preencha email e senha!');
+    
     setLoading(true);
     try {
       const response = await axios.post(API_URL, { email, senha });
-      navigation.navigate('Home', { 
-        nome: response.data.usuario.nome,
-        id: response.data.usuario.id
+      
+      // 👇 A MÁGICA ACONTECE AQUI 👇
+      // Em vez de ir para 'Home', vamos para 'MainTabs' (a tela com a barra embaixo)
+      // E usamos reset para ele não conseguir voltar para o login com o botão voltar
+      navigation.reset({
+        index: 0,
+        routes: [{ 
+          name: 'MainTabs', 
+          params: { 
+            nome: response.data.usuario.nome,
+            id: response.data.usuario.id
+          } 
+        }],
       });
+
     } catch (error) {
-      Alert.alert('Erro', 'Dados incorretos.');
+      Alert.alert('Erro', 'Email ou senha incorretos.');
     } finally {
       setLoading(false);
     }
@@ -32,9 +44,8 @@ export function Login({ navigation }: any) {
     <LinearGradient colors={['#FFFFFF', '#C8A2C8', '#A555B9']} style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
         
-        {/* --- LOGO MENOR --- */}
+        {/* LOGO */}
         <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" /> 
-
         <Text style={styles.brandTitle}>Sthe<Text style={{color: '#2F9F85'}}>NutriCare</Text></Text>
 
         {/* INPUT EMAIL */}
@@ -42,9 +53,10 @@ export function Login({ navigation }: any) {
           <Ionicons name="person" size={20} color="#333" style={styles.icon} />
           <TextInput 
             style={styles.input}
-            placeholder="EMAIL / TELEFONE"
+            placeholder="EMAIL"
             placeholderTextColor="#666"
             value={email} onChangeText={setEmail} autoCapitalize="none"
+            keyboardType="email-address"
           />
         </View>
 
@@ -59,6 +71,7 @@ export function Login({ navigation }: any) {
           />
         </View>
 
+        {/* BOTÃO ENTRAR */}
         <TouchableOpacity style={styles.buttonContainer} onPress={handleLogin} disabled={loading}>
           <LinearGradient
             colors={['#A555B9', '#2F9F85']}
@@ -78,14 +91,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   
-  // Estilo da Logo na tela de Login
-  logo: { 
-    width: 120, 
-    height: 120, 
-    marginBottom: 5 
-  },
-
+  logo: { width: 120, height: 120, marginBottom: 5 },
   brandTitle: { fontSize: 28, fontWeight: 'bold', color: '#A555B9', marginBottom: 30 },
+  
   inputContainer: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.5)',
     borderRadius: 30, borderWidth: 2, borderColor: '#2F9F85',
@@ -93,6 +101,7 @@ const styles = StyleSheet.create({
   },
   icon: { marginRight: 10 },
   input: { flex: 1, color: '#333' },
+  
   buttonContainer: { width: '100%', marginTop: 20 },
   gradientButton: { height: 55, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: '#FFF', fontSize: 20, fontWeight: 'bold', letterSpacing: 1 }

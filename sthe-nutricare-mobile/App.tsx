@@ -1,27 +1,111 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { StatusBar, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // --- IMPORTAÇÃO DAS TELAS ---
-// Agora importamos todas de seus arquivos separados
-import { Welcome } from './src/screens/Welcome'; // A tela nova de Boas-vindas
-import { Login } from './src/screens/Login';     // A tela nova de Login
-import { Home } from './src/screens/Home';
-import { Agendamento } from './src/screens/Agendamento';
-import { Historico } from './src/screens/Historico';
+
+// Telas de Autenticação (Fluxo Stack)
+import { Welcome } from './src/screens/Welcome';
+import { Login } from './src/screens/Login';
 import { CadastroStep1 } from './src/screens/CadastroStep1';
 import { CadastroStep2 } from './src/screens/CadastroStep2';
 
-const Stack = createNativeStackNavigator();
+// Telas Principais (Fluxo Tabs)
+import { Home } from './src/screens/Home'; // Agendamentos
+import { PlanoAlimentar } from './src/screens/PlanoAlimentar';
+import { FeedHome } from './src/screens/FeedHome';
+import { IdeiasNutri } from './src/screens/IdeiasNutri';
+import { Desempenho } from './src/screens/Desempenho';
 
+// Telas Secundárias (Abrem por cima das abas)
+import { Agendamento } from './src/screens/Agendamento';
+import { Historico } from './src/screens/Historico';
+import { Perfil } from './src/screens/Perfil';
+
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// --- CONFIGURAÇÃO DA BARRA DE ABAS (NAVBAR) ---
+function MainTabs({ route }: any) {
+  const { id, nome } = route.params || { id: 0, nome: 'Visitante' };
+
+  return (
+    <Tab.Navigator
+      initialRouteName="Agendamentos"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: '#A555B9',
+        tabBarInactiveTintColor: '#C4C4C4',
+        tabBarStyle: {
+          backgroundColor: '#FFF',
+          borderTopWidth: 0,
+          elevation: 5,
+          
+          // 👇 AQUI ESTÁ A CORREÇÃO DE ALTURA 👇
+          height: Platform.OS === 'ios' ? 95 : 80, // Aumentei de 60 para 80 no Android
+          paddingBottom: Platform.OS === 'ios' ? 30 : 20, // Aumentei de 10 para 20
+          paddingTop: 10, // Adicionei para o ícone não ficar colado no topo
+        },
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: any;
+
+          if (route.name === 'FeedHome') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Agendamentos') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'IdeiasNutri') {
+            iconName = focused ? 'bulb' : 'bulb-outline';
+          } else if (route.name === 'PlanoAlimentar') {
+            iconName = focused ? 'restaurant' : 'restaurant-outline';
+          } else if (route.name === 'Desempenho') {
+            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          }
+
+          return <Ionicons name={iconName} size={28} color={color} />;
+        },
+      })}
+    >
+      <Tab.Screen 
+        name="FeedHome" 
+        component={FeedHome} 
+        initialParams={{ usuarioId: id, nome }} 
+      />
+
+      <Tab.Screen 
+        name="Agendamentos" 
+        component={Home} 
+        initialParams={{ id, nome }} 
+      />
+
+      <Tab.Screen 
+        name="IdeiasNutri" 
+        component={IdeiasNutri} 
+        initialParams={{ usuarioId: id }}
+      />
+
+      <Tab.Screen 
+        name="PlanoAlimentar" 
+        component={PlanoAlimentar} 
+        initialParams={{ usuarioId: id }}
+      />
+
+      <Tab.Screen 
+        name="Desempenho" 
+        component={Desempenho} 
+        initialParams={{ usuarioId: id }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+// --- NAVEGAÇÃO PRINCIPAL (STACK) ---
 export default function App() {
   return (
     <NavigationContainer>
-      {/* StatusBar Transparente:
-         Isso faz o gradiente da tela Welcome ir até o topo da tela, 
-         ficando atrás da hora/bateria do celular. Fica muito mais moderno!
-      */}
       <StatusBar 
         barStyle="dark-content" 
         backgroundColor="transparent" 
@@ -29,24 +113,22 @@ export default function App() {
       />
       
       <Stack.Navigator 
-        initialRouteName="Welcome" // <--- O App começa na tela de Boas-vindas
+        initialRouteName="Welcome" 
         screenOptions={{ 
-          headerShown: false, // Esconde a barra de título padrão em tudo
-          animation: 'slide_from_right' // Animação suave entre telas
+          headerShown: false, 
+          animation: 'slide_from_right' 
         }}
       >
+        <Stack.Screen name="Welcome" component={Welcome} />
+        <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="CadastroStep1" component={CadastroStep1} />
         <Stack.Screen name="CadastroStep2" component={CadastroStep2} />
-        {/* 1. Tela Inicial (Botão Entrar grande) */}
-        <Stack.Screen name="Welcome" component={Welcome} />
         
-        {/* 2. Tela de Login (Formulário) */}
-        <Stack.Screen name="Login" component={Login} />
-        
-        {/* 3. Área Logada */}
-        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+
         <Stack.Screen name="Agendamento" component={Agendamento} />
         <Stack.Screen name="Historico" component={Historico} />
+        <Stack.Screen name="Perfil" component={Perfil} />
         
       </Stack.Navigator>
     </NavigationContainer>
