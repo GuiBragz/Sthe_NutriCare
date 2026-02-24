@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import axios from 'axios';
 
-// ⚠️ CONFIRA SEU IP
-const API_URL = 'http://192.168.1.3:3000';
+// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
+import api from '../services/api'; 
 
-export function PlanoAlimentar({ route, navigation }: any) {
+// ❌ REMOVEMOS: import axios ...
+// ❌ REMOVEMOS: const API_URL = ...
+
+export function PlanoAlimentar({ route }: any) {
   const { usuarioId } = route.params;
   const [plano, setPlano] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -17,10 +19,11 @@ export function PlanoAlimentar({ route, navigation }: any) {
     useCallback(() => {
       async function carregarPlano() {
         try {
-          const response = await axios.get(`${API_URL}/planos/${usuarioId}`);
+          // 👇 USAMOS api.get NA ROTA '/planos/ID'
+          const response = await api.get(`/planos/${usuarioId}`);
           setPlano(response.data);
         } catch (error) {
-          setPlano(null); // Nenhum plano encontrado
+          setPlano(null); 
         } finally {
           setLoading(false);
         }
@@ -33,12 +36,10 @@ export function PlanoAlimentar({ route, navigation }: any) {
     <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* Cabeçalho */}
+        {/* Cabeçalho (Sem botão voltar, pois é uma Aba Principal) */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#A555B9" />
-          </TouchableOpacity>
           <Text style={styles.title}>Meu Plano 🥗</Text>
+          <Text style={styles.subtitle}>Sua dieta personalizada</Text>
         </View>
 
         {loading ? (
@@ -53,7 +54,6 @@ export function PlanoAlimentar({ route, navigation }: any) {
             <View style={styles.cardBody}>
               <Text style={styles.descricao}>{plano.descricao}</Text>
               
-              {/* Se tivesse link do PDF, apareceria aqui */}
               {plano.arquivoUrl && (
                 <TouchableOpacity style={styles.pdfButton}>
                   <Ionicons name="document-text" size={20} color="#A555B9" />
@@ -84,10 +84,11 @@ export function PlanoAlimentar({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingTop: 50 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-  backBtn: { padding: 8, backgroundColor: '#FFF', borderRadius: 10, marginRight: 15, elevation: 2 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  content: { padding: 24, paddingTop: 60, paddingBottom: 100 }, // Padding maior pra não cobrir a TabBar
+  
+  header: { marginBottom: 30 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#A555B9' },
+  subtitle: { fontSize: 16, color: '#666' },
 
   cardPlano: { backgroundColor: '#FFF', borderRadius: 20, overflow: 'hidden', elevation: 4 },
   cardHeader: { 

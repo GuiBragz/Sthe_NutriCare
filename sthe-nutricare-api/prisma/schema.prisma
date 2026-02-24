@@ -4,16 +4,16 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "mysql" // Se estiver usando SQLite no mobile local, mude para "sqlite"
   url      = env("DATABASE_URL")
 }
 
 // --- TABELAS DO SISTEMA ---
 
 model Usuario {
-  id            Int      @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   nomeCompleto  String
-  email         String   @unique
+  email         String      @unique
   senha         String
   tipo          TipoUsuario @default(PACIENTE)
   telefone      String?
@@ -26,7 +26,7 @@ model Usuario {
   objetivos      String?   // ex: "SAUDE,EMAGRECER"
   // -------------------------------
 
-  dataCriacao   DateTime @default(now())
+  dataCriacao    DateTime @default(now())
 
   // Relacionamentos
   agendamentos    Agendamento[]
@@ -43,7 +43,7 @@ model MetaSaude {
   usuario            Usuario @relation(fields: [usuarioId], references: [id])
   pesoAtual          Float
   pesoMeta           Float
-  // Altura removida daqui pois agora fica no Usuario, ou pode manter como histórico
+  // Altura removida daqui pois agora fica no Usuario
   metaCaloricaDiaria Int // ex: 2000 kcal
   metaAguaDiaria     Int // ex: 2500 ml
 
@@ -55,10 +55,15 @@ model Agendamento {
   usuarioId        Int
   usuario          Usuario  @relation(fields: [usuarioId], references: [id])
   dataHoraConsulta DateTime
-  valorPago        Decimal  @db.Decimal(10, 2)
+  valorPago        Decimal?  @db.Decimal(10, 2) // Deixei opcional (?) pra facilitar testes
   formaPagamento   FormaPagamento
   status           StatusAgendamento @default(AGUARDANDO_PAGAMENTO)
   observacoes      String?
+
+  // 👇 NOVOS CAMPOS ADICIONADOS
+  tipoConsulta     TipoConsulta @default(PRESENCIAL)
+  linkMeet         String?      // Link do Google Meet (Só se for online)
+  endereco         String?      // Endereço do consultório (Só se for presencial)
 
   @@map("tb_agendamentos")
 }
@@ -104,6 +109,7 @@ model DiarioDiario {
 
 enum TipoUsuario {
   ADMIN
+  NUTRICIONISTA  // Adicionado
   PACIENTE
 }
 
@@ -114,8 +120,14 @@ enum FormaPagamento {
 
 enum StatusAgendamento {
   AGUARDANDO_PAGAMENTO
+  AGENDADO             // Adicionei esse status comum
   CONFIRMADO
   REALIZADO
   CANCELADO_COM_CREDITO
   CANCELADO
+}
+
+enum TipoConsulta { // Novo Enum
+  ONLINE
+  PRESENCIAL
 }

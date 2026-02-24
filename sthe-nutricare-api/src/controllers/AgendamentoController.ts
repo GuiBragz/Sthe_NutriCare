@@ -1,17 +1,20 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-// 1. CRIAR AGENDAMENTO
+// Endereço fixo do consultório (Stheffane)
+const ENDERECO_CONSULTORIO = "Av. Boa Viagem, 1234, Sala 101 - Recife/PE";
+
+// 1. CRIAR AGENDAMENTO (Atualizado com Tipo e Endereço)
 export const criarAgendamento = async (req: Request, res: Response) => {
   try {
-    const { usuarioId, dataHora, formaPagamento } = req.body;
+    // 👇 Recebemos agora o 'tipoConsulta' do App
+    const { usuarioId, dataHora, formaPagamento, tipoConsulta } = req.body;
 
-    // Validação simples
     if (!usuarioId || !dataHora || !formaPagamento) {
       return res.status(400).json({ erro: 'Dados incompletos para agendamento.' });
     }
 
-    // Verifica se o horário exato já está ocupado
+    // Verifica disponibilidade
     const horarioOcupado = await prisma.agendamento.findFirst({
       where: {
         dataHoraConsulta: new Date(dataHora),
@@ -23,14 +26,21 @@ export const criarAgendamento = async (req: Request, res: Response) => {
       return res.status(409).json({ erro: 'Este horário já está reservado.' });
     }
 
-    // Salva no banco
+    // Define endereço se for presencial
+    const enderecoFinal = (tipoConsulta === 'PRESENCIAL') ? ENDERECO_CONSULTORIO : null;
+
     const novoAgendamento = await prisma.agendamento.create({
       data: {
         usuarioId: Number(usuarioId),
         dataHoraConsulta: new Date(dataHora),
-        valorPago: 150.00, // Valor fixo do MVP
+        valorPago: 150.00,
         formaPagamento: formaPagamento,
-        status: 'AGUARDANDO_PAGAMENTO'
+        status: 'AGENDADO', // Mudei de 'AGUARDANDO_PAGAMENTO' para simplificar o MVP
+        
+        // 👇 Novos Campos
+        tipoConsulta: tipoConsulta || 'PRESENCIAL',
+        endereco: enderecoFinal,
+        linkMeet: null // Começa vazio, a Nutri põe depois
       }
     });
 
@@ -45,27 +55,20 @@ export const criarAgendamento = async (req: Request, res: Response) => {
   }
 };
 
-// 2. BUSCAR PRÓXIMA CONSULTA
+// 2. BUSCAR PRÓXIMA CONSULTA (Já vai trazer os dados novos automaticamente)
 export const buscarProximaConsulta = async (req: Request, res: Response) => {
   try {
     const { usuarioId } = req.params;
-
-    // Define "Hoje" começando à meia-noite (00:00:00)
-    // Isso garante que consultas marcadas para hoje, mas que já "passaram" da hora atual, ainda apareçam.
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     const proxima = await prisma.agendamento.findFirst({
       where: {
         usuarioId: Number(usuarioId),
-        dataHoraConsulta: {
-          gte: hoje // Maior ou igual a hoje 00:00
-        },
+        dataHoraConsulta: { gte: hoje },
         status: { not: 'CANCELADO' }
       },
-      orderBy: {
-        dataHoraConsulta: 'asc' // Pega a mais próxima (menor data)
-      }
+      orderBy: { dataHoraConsulta: 'asc' }
     });
 
     if (!proxima) {
@@ -75,7 +78,6 @@ export const buscarProximaConsulta = async (req: Request, res: Response) => {
     return res.json(proxima);
 
   } catch (error) {
-    console.error("Erro ao buscar consulta:", error);
     return res.status(500).json({ erro: 'Erro ao buscar consulta.' });
   }
 };
@@ -84,36 +86,58 @@ export const buscarProximaConsulta = async (req: Request, res: Response) => {
 export const cancelarAgendamento = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-
     await prisma.agendamento.update({
       where: { id: Number(id) },
       data: { status: 'CANCELADO' }
     });
-
     return res.json({ mensagem: 'Agendamento cancelado com sucesso.' });
-
   } catch (error) {
-    console.error("Erro ao cancelar:", error);
     return res.status(500).json({ erro: 'Erro ao cancelar agendamento.' });
   }
 };
-// 4. LISTAR HISTÓRICO COMPLETO
+
+// 4. LISTAR HISTÓRICO (Do Paciente)
 export const listarHistorico = async (req: Request, res: Response) => {
   try {
     const { usuarioId } = req.params;
-
     const lista = await prisma.agendamento.findMany({
-      where: {
-        usuarioId: Number(usuarioId)
-      },
-      orderBy: {
-        dataHoraConsulta: 'desc' // 'desc' = Do mais novo para o mais antigo
-      }
+      where: { usuarioId: Number(usuarioId) },
+      orderBy: { dataHoraConsulta: 'desc' }
     });
-
     return res.json(lista);
-
   } catch (error) {
     return res.status(500).json({ erro: 'Erro ao buscar histórico.' });
   }
+};
+
+// 5. ATUALIZAR LINK DO MEET (Novo! Para a Nutri usar) 📹
+export const atualizarLinkMeet = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { link } = req.body;
+
+        const agendamento = await prisma.agendamento.update({
+            where: { id: Number(id) },
+            data: { linkMeet: link }
+        });
+
+        return res.json({ mensagem: "Link salvo!", agendamento });
+    } catch (error) {
+        return res.status(500).json({ error: "Erro ao salvar link." });
+    }
+};
+
+// 6. LISTAR TODOS AGENDAMENTOS (Novo! Para a Agenda da Nutri) 📅
+export const listarTodosAgendamentos = async (req: Request, res: Response) => {
+    try {
+        // Pega tudo que não foi cancelado, ordenado por data
+        const lista = await prisma.agendamento.findMany({
+            where: { status: { not: 'CANCELADO' } },
+            include: { usuario: true }, // Traz o nome do paciente junto
+            orderBy: { dataHoraConsulta: 'asc' }
+        });
+        return res.json(lista);
+    } catch (error) {
+        return res.status(500).json({ error: "Erro ao listar agenda." });
+    }
 };

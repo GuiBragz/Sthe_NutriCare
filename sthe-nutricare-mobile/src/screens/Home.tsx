@@ -1,24 +1,28 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
 
-// ⚠️ CONFIRA SEU IP
-const API_URL = 'http://192.168.1.3:3000'; 
+// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
+import api from '../services/api'; 
+
+// ❌ REMOVEMOS: import axios ...
+// ❌ REMOVEMOS: const API_URL = ...
 
 export function Home({ route, navigation }: any) {
   const { nome, id } = route.params || { nome: 'Visitante', id: 0 };
   const [consulta, setConsulta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Busca dados (igual antes)
+  // Busca dados
   const carregarDados = async () => {
     if (!id) return;
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/agendamentos/${id}`);
+      // 👇 USAMOS api.get NA ROTA '/agendamentos/...'
+      const response = await api.get(`/agendamentos/${id}`);
+      
       if (response.data.dataHoraConsulta) {
         setConsulta(response.data);
       } else {
@@ -47,7 +51,8 @@ export function Home({ route, navigation }: any) {
           text: "Sim", style: 'destructive',
           onPress: async () => {
             try {
-              await axios.patch(`${API_URL}/agendamentos/${consulta.id}/cancelar`);
+              // 👇 USAMOS api.patch NA ROTA DE CANCELAR
+              await api.patch(`/agendamentos/${consulta.id}/cancelar`);
               carregarDados();
             } catch (error) {
               Alert.alert("Erro", "Não foi possível cancelar.");
@@ -77,7 +82,6 @@ export function Home({ route, navigation }: any) {
             <Text style={styles.subtitle}>Vamos cuidar de você hoje?</Text>
           </View>
           
-          {/* BOTÃO PERFIL (Mudamos de Log-out para Person) */}
           <TouchableOpacity 
             onPress={() => navigation.navigate('Perfil', { usuarioId: id })} 
             style={styles.iconBtn}
@@ -115,13 +119,13 @@ export function Home({ route, navigation }: any) {
           )}
         </View>
 
-        {/* --- NOVO BOTÃO: MEU PLANO ALIMENTAR --- */}
+        {/* --- CARD MEU PLANO ALIMENTAR --- */}
         <TouchableOpacity 
           style={styles.dietCard}
           onPress={() => navigation.navigate('PlanoAlimentar', { usuarioId: id })}
         >
           <LinearGradient
-            colors={['#FF9966', '#FF5E62']} // Gradiente Laranja/Vermelho
+            colors={['#FF9966', '#FF5E62']} 
             start={{x:0, y:0}} end={{x:1, y:1}}
             style={styles.dietGradient}
           >
@@ -133,7 +137,7 @@ export function Home({ route, navigation }: any) {
           </LinearGradient>
         </TouchableOpacity>
         
-        {/* BOTÃO AGENDAR (GRADIENTE) */}
+        {/* BOTÃO AGENDAR */}
         <TouchableOpacity 
           style={styles.actionButtonContainer}
           onPress={() => navigation.navigate('Agendamento', { usuarioId: id })}
@@ -148,7 +152,7 @@ export function Home({ route, navigation }: any) {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* BOTÃO HISTÓRICO (OUTLINE) */}
+        {/* BOTÃO HISTÓRICO */}
         <TouchableOpacity 
           style={styles.secondaryButton}
           onPress={() => navigation.navigate('Historico', { usuarioId: id })}
@@ -159,7 +163,6 @@ export function Home({ route, navigation }: any) {
 
       </ScrollView>
       
-      {/* Rodapé decorativo */}
       <View style={styles.footerDecoration} /> 
     </LinearGradient>
   );
@@ -174,14 +177,9 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 16, color: '#666' },
   iconBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, elevation: 2 },
 
-  // Card Estilo Novo
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 15, // Diminuí um pouco pra caber o botão de dieta
-    elevation: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8
+    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 15,
+    elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 10 },
   cardTitle: { color: '#2F9F85', fontWeight: 'bold', fontSize: 14, marginLeft: 10, letterSpacing: 1 },
@@ -199,13 +197,11 @@ const styles = StyleSheet.create({
   emptyState: { padding: 20, alignItems: 'center' },
   emptyText: { color: '#999', fontStyle: 'italic' },
 
-  // --- ESTILOS DO BOTÃO DIETA ---
   dietCard: { marginBottom: 15, borderRadius: 20, elevation: 4, overflow: 'hidden' },
   dietGradient: { padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dietTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   dietSub: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
 
-  // Botões
   actionButtonContainer: { marginBottom: 15, elevation: 4 },
   gradientButton: { 
     flexDirection: 'row', height: 60, borderRadius: 30, 

@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
-
-// ⚠️ SEU IP
-const API_URL = 'http://192.168.1.3:3000/agendamentos';
+import api from '../services/api'; 
 
 export function Agendamento({ route, navigation }: any) {
   const { usuarioId } = route.params;
@@ -15,6 +12,9 @@ export function Agendamento({ route, navigation }: any) {
   const [showPicker, setShowPicker] = useState(false);
   const [mode, setMode] = useState<'date' | 'time'>('date'); 
   const [pagamento, setPagamento] = useState('PIX');
+  
+  // 👇 NOVO ESTADO PARA O TIPO DE CONSULTA
+  const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'ONLINE'>('PRESENCIAL');
   const [loading, setLoading] = useState(false);
 
   const onChange = (event: any, selectedDate?: Date) => {
@@ -28,15 +28,22 @@ export function Agendamento({ route, navigation }: any) {
   };
 
   async function handleAgendar() {
+    // Validação básica de horário (opcional)
+    const hora = dataConsulta.getHours();
+    if (hora < 8 || hora > 18) {
+       return Alert.alert("Atenção", "Nosso horário de atendimento é das 08h às 18h.");
+    }
+
     setLoading(true);
     try {
-      await axios.post(API_URL, {
+      await api.post('/agendamentos', {
         usuarioId: usuarioId,
         dataHora: dataConsulta.toISOString(),
-        formaPagamento: pagamento
+        formaPagamento: pagamento,
+        tipoConsulta: tipoConsulta // 👇 Enviando a escolha do usuário
       });
 
-      Alert.alert('Sucesso! 🎉', 'Agendamento realizado.');
+      Alert.alert('Sucesso! 🎉', 'Agendamento realizado com sucesso.');
       navigation.goBack(); 
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível agendar. Tente outro horário.');
@@ -52,7 +59,7 @@ export function Agendamento({ route, navigation }: any) {
     <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* Cabeçalho com botão Voltar */}
+        {/* Cabeçalho */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#A555B9" />
@@ -60,7 +67,27 @@ export function Agendamento({ route, navigation }: any) {
           <Text style={styles.title}>Nova Consulta</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>1. QUANDO SERÁ?</Text>
+        {/* --- SELEÇÃO DE TIPO (NOVO) --- */}
+        <Text style={styles.sectionLabel}>1. TIPO DE ATENDIMENTO</Text>
+        <View style={styles.typeContainer}>
+           <TouchableOpacity 
+             style={[styles.typeBtn, tipoConsulta === 'PRESENCIAL' && styles.typeBtnSelected]}
+             onPress={() => setTipoConsulta('PRESENCIAL')}
+           >
+             <Ionicons name="business" size={24} color={tipoConsulta === 'PRESENCIAL' ? '#FFF' : '#A555B9'} />
+             <Text style={[styles.typeText, tipoConsulta === 'PRESENCIAL' && styles.typeTextSelected]}>NO CONSULTÓRIO</Text>
+           </TouchableOpacity>
+
+           <TouchableOpacity 
+             style={[styles.typeBtn, tipoConsulta === 'ONLINE' && styles.typeBtnSelected]}
+             onPress={() => setTipoConsulta('ONLINE')}
+           >
+             <Ionicons name="videocam" size={24} color={tipoConsulta === 'ONLINE' ? '#FFF' : '#A555B9'} />
+             <Text style={[styles.typeText, tipoConsulta === 'ONLINE' && styles.typeTextSelected]}>ONLINE (MEET)</Text>
+           </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>2. QUANDO SERÁ?</Text>
         
         {/* SELETORES DE DATA E HORA */}
         <View style={styles.row}>
@@ -92,7 +119,20 @@ export function Agendamento({ route, navigation }: any) {
           />
         )}
 
-        <Text style={[styles.sectionLabel, { marginTop: 30 }]}>2. PAGAMENTO VIA:</Text>
+        {/* INFO DO LOCAL (NOVO) */}
+        {tipoConsulta === 'PRESENCIAL' ? (
+             <View style={styles.infoBox}>
+                <Ionicons name="location-sharp" size={16} color="#666" />
+                <Text style={styles.infoText}>Av. Boa Viagem, 1234, Sala 101 - Recife/PE</Text>
+             </View>
+        ) : (
+             <View style={styles.infoBox}>
+                <Ionicons name="logo-google" size={16} color="#666" />
+                <Text style={styles.infoText}>O link do Google Meet será enviado após confirmação.</Text>
+             </View>
+        )}
+
+        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>3. PAGAMENTO VIA:</Text>
         
         {/* OPÇÕES DE PAGAMENTO */}
         <View style={styles.paymentContainer}>
@@ -137,17 +177,26 @@ export function Agendamento({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingTop: 50 },
+  content: { padding: 24, paddingTop: 50, paddingBottom: 50 },
   
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   backBtn: { padding: 8, backgroundColor: '#FFF', borderRadius: 10, marginRight: 15, elevation: 2 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
 
-  sectionLabel: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 15, letterSpacing: 1 },
+  sectionLabel: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 10, marginTop: 15, letterSpacing: 1 },
+
+  // --- ESTILOS DO TIPO DE CONSULTA ---
+  typeContainer: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  typeBtn: { flex: 1, backgroundColor: '#FFF', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 2, borderColor: '#DDD', elevation: 2 },
+  typeBtnSelected: { backgroundColor: '#A555B9', borderColor: '#A555B9' },
+  typeText: { fontSize: 10, fontWeight: 'bold', color: '#999', marginTop: 5 },
+  typeTextSelected: { color: '#FFF' },
+  
+  infoBox: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 10 },
+  infoText: { fontSize: 12, color: '#666', fontStyle: 'italic' },
 
   row: { flexDirection: 'row', gap: 15 },
   
-  // Cards de Data/Hora
   selectorCard: { 
     flex: 1, backgroundColor: '#FFF', borderRadius: 20, padding: 20, 
     alignItems: 'center', justifyContent: 'center',
@@ -157,17 +206,15 @@ const styles = StyleSheet.create({
   selectorLabel: { fontSize: 12, color: '#999', fontWeight: 'bold', marginBottom: 5 },
   selectorValue: { fontSize: 18, fontWeight: 'bold', color: '#333' },
 
-  // Pagamento
   paymentContainer: { flexDirection: 'row', gap: 15 },
   payOption: { 
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     padding: 15, backgroundColor: '#FFF', borderRadius: 15, borderWidth: 2, borderColor: '#F0E6F5'
   },
   payOptionSelected: { backgroundColor: '#A555B9', borderColor: '#A555B9' },
-  payText: { fontWeight: 'bold', color: '#A555B9' },
+  payText: { fontWeight: 'bold', color: '#236b80' },
   payTextSelected: { color: '#FFF' },
 
-  // Valor
   valorCard: { 
     marginTop: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.6)', padding: 20, borderRadius: 15, borderWidth: 1, borderColor: '#FFF'
@@ -175,7 +222,6 @@ const styles = StyleSheet.create({
   valorLabel: { fontSize: 16, color: '#333' },
   valorTotal: { fontSize: 22, fontWeight: 'bold', color: '#2F9F85' },
 
-  // Botão Confirmar
   confirmButtonContainer: { marginTop: 40, elevation: 5 },
   gradientButton: { height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   confirmText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 }

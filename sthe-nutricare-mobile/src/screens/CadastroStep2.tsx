@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
 
-// ⚠️ CONFIRA SEU IP
-const API_URL = 'http://192.168.1.3:3000/usuarios'; // Rota de cadastro (POST)
+// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
+import api from '../services/api'; 
+
+// ❌ REMOVEMOS: import axios ...
+// ❌ REMOVEMOS: const API_URL = ...
 
 export function CadastroStep2({ route, navigation }: any) {
   // Recebe os dados da tela anterior
@@ -13,7 +15,7 @@ export function CadastroStep2({ route, navigation }: any) {
 
   const [altura, setAltura] = useState('');
   const [sexo, setSexo] = useState<'M' | 'F' | null>(null);
-  const [senha, setSenha] = useState(''); // Precisamos pedir senha em algum lugar! Vou por aqui.
+  const [senha, setSenha] = useState(''); 
   
   // Objetivos (Array de strings)
   const [objetivos, setObjetivos] = useState<string[]>([]);
@@ -42,7 +44,8 @@ export function CadastroStep2({ route, navigation }: any) {
         objetivos: objetivos.join(',') // Vira "SAUDE,EMAGRECER"
       };
 
-      await axios.post(API_URL, payload);
+      // 👇 USAMOS O api.post NA ROTA '/usuarios'
+      await api.post('/usuarios', payload);
       
       Alert.alert("Sucesso! 🎉", "Conta criada. Faça login agora.");
       navigation.navigate('Login');
@@ -76,7 +79,7 @@ export function CadastroStep2({ route, navigation }: any) {
           keyboardType="numeric" 
         />
         
-        {/* SENHA (Adicionei aqui pois é obrigatório para login) */}
+        {/* SENHA */}
         <TextInput 
           style={styles.input} 
           placeholder="CRIE UMA SENHA" 

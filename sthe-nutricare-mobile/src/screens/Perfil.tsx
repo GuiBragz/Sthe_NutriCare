@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import axios from 'axios';
 
-// ⚠️ CONFIRA SEU IP
-const API_URL = 'http://192.168.1.3:3000';
+// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
+import api from '../services/api'; 
+
+// ❌ REMOVEMOS: import axios ...
+// ❌ REMOVEMOS: const API_URL = ...
 
 export function Perfil({ route, navigation }: any) {
   const { usuarioId } = route.params;
@@ -17,12 +19,13 @@ export function Perfil({ route, navigation }: any) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editNome, setEditNome] = useState('');
   const [editAltura, setEditAltura] = useState('');
-  const [editNascimento, setEditNascimento] = useState(''); // ADICIONEI ESSE CAMPO
+  const [editNascimento, setEditNascimento] = useState(''); 
   const [editObjetivos, setEditObjetivos] = useState('');
 
   const carregarPerfil = async () => {
     try {
-      const response = await axios.get(`${API_URL}/usuarios/${usuarioId}`);
+      // 👇 USAMOS api.get NA ROTA '/usuarios/ID'
+      const response = await api.get(`/usuarios/${usuarioId}`);
       setPerfil(response.data);
     } catch (error) {
       console.log('Erro ao carregar perfil');
@@ -42,25 +45,21 @@ export function Perfil({ route, navigation }: any) {
     if (!dataString) return '--';
 
     let diaNasc, mesNasc, anoNasc;
-
-    // Tenta limpar espaços vazios
     const limpa = dataString.trim();
 
     try {
-      // Caso 1: Formato ISO ou com traço (YYYY-MM-DD ou DD-MM-YYYY)
       if (limpa.includes('-')) {
         const partes = limpa.split('-');
-        if (partes[0].length === 4) { // É YYYY-MM-DD
+        if (partes[0].length === 4) { 
           anoNasc = parseInt(partes[0]);
           mesNasc = parseInt(partes[1]) - 1;
           diaNasc = parseInt(partes[2]);
-        } else { // É DD-MM-YYYY
+        } else { 
           diaNasc = parseInt(partes[0]);
           mesNasc = parseInt(partes[1]) - 1;
           anoNasc = parseInt(partes[2]);
         }
       } 
-      // Caso 2: Formato BR com barras (DD/MM/YYYY)
       else if (limpa.includes('/')) {
         const partes = limpa.split('/');
         diaNasc = parseInt(partes[0]);
@@ -68,7 +67,7 @@ export function Perfil({ route, navigation }: any) {
         anoNasc = parseInt(partes[2]);
       }
       else {
-        return dataString; // Formato desconhecido, devolve o texto
+        return dataString; 
       }
 
       if (!anoNasc || !mesNasc || !diaNasc) return dataString;
@@ -93,7 +92,7 @@ export function Perfil({ route, navigation }: any) {
     if (perfil) {
       setEditNome(perfil.nomeCompleto);
       setEditAltura(perfil.altura ? String(perfil.altura) : '');
-      setEditNascimento(perfil.dataNascimento || ''); // Pega a data atual pra editar
+      setEditNascimento(perfil.dataNascimento || ''); 
       setEditObjetivos(perfil.objetivos || '');
       setModalVisible(true);
     }
@@ -101,16 +100,14 @@ export function Perfil({ route, navigation }: any) {
 
   async function salvarEdicao() {
     try {
-      // Agora mandamos o nascimento novo também!
-      await axios.put(`${API_URL}/usuarios/${usuarioId}`, {
+      // 👇 USAMOS api.put NA ROTA '/usuarios/ID'
+      await api.put(`/usuarios/${usuarioId}`, {
         nome: editNome,
         altura: editAltura,
         objetivos: editObjetivos,
-        nascimento: editNascimento, // Vai atualizar no banco
+        nascimento: editNascimento,
         sexo: perfil.sexo 
       });
-      
-      // Precisamos atualizar o UsuarioController para aceitar 'nascimento' no PUT (próximo passo)
       
       setModalVisible(false);
       Alert.alert("Sucesso", "Perfil atualizado!");
@@ -168,7 +165,6 @@ export function Perfil({ route, navigation }: any) {
             <View style={styles.statLine} />
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>IDADE</Text>
-              {/* Mostra a idade calculada OU o texto cru se falhar */}
               <Text style={styles.statValue}>
                 {calcularIdadeReal(perfil?.dataNascimento)}
               </Text>
@@ -216,7 +212,6 @@ export function Perfil({ route, navigation }: any) {
             <Text style={styles.labelInput}>Nome Completo</Text>
             <TextInput style={styles.input} value={editNome} onChangeText={setEditNome} />
             
-            {/* NOVO CAMPO DE DATA */}
             <Text style={styles.labelInput}>Data de Nascimento (DD/MM/AAAA)</Text>
             <TextInput 
               style={styles.input} 
