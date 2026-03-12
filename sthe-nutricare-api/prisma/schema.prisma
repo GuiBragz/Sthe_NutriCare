@@ -34,6 +34,11 @@ model Usuario {
   diarios         DiarioDiario[]
   planos          PlanoNutricional[]
 
+  // 👇 RELACIONAMENTOS DE INTERAÇÃO COM RECEITAS 👇
+  likesReceitas     ReceitaLike[]
+  receitasFavoritas ReceitaFavorita[]
+  comentarios       ComentarioReceita[]
+
   @@map("tb_usuarios")
 }
 
@@ -52,15 +57,18 @@ model MetaSaude {
 
 model Agendamento {
   id               Int      @id @default(autoincrement())
-  usuarioId        Int
-  usuario          Usuario  @relation(fields: [usuarioId], references: [id])
+  
+  // 👇 AGORA SÃO OPCIONAIS (Tem o ponto de interrogação ?)
+  usuarioId        Int?
+  usuario          Usuario? @relation(fields: [usuarioId], references: [id])
+  formaPagamento   FormaPagamento? 
+  valorPago        Decimal?  @db.Decimal(10, 2)
+
   dataHoraConsulta DateTime
-  valorPago        Decimal?  @db.Decimal(10, 2) // Deixei opcional (?) pra facilitar testes
-  formaPagamento   FormaPagamento
-  status           StatusAgendamento @default(AGUARDANDO_PAGAMENTO)
+  status           StatusAgendamento @default(DISPONIVEL) // 👇 O PADRÃO AGORA É DISPONÍVEL
   observacoes      String?
 
-  // 👇 NOVOS CAMPOS ADICIONADOS
+  // NOVOS CAMPOS ADICIONADOS
   tipoConsulta     TipoConsulta @default(PRESENCIAL)
   linkMeet         String?      // Link do Google Meet (Só se for online)
   endereco         String?      // Endereço do consultório (Só se for presencial)
@@ -80,6 +88,7 @@ model PlanoNutricional {
   @@map("tb_planos_nutricionais")
 }
 
+// 👇 TABELA DE RECEITAS ATUALIZADA 👇
 model Receita {
   id             Int    @id @default(autoincrement())
   titulo         String
@@ -88,8 +97,52 @@ model Receita {
   caloriasTotais Int
   fotoUrl        String?
   categoria      String // ex: "Cafe da Manha"
+  
+  dataCriacao    DateTime @default(now()) // Novo campo para ordenar o "Feed"
+
+  // Relacionamentos com as interações
+  comentarios    ComentarioReceita[]
+  likes          ReceitaLike[]
+  favoritos      ReceitaFavorita[]
 
   @@map("tb_receitas")
+}
+
+// 👇 NOVAS TABELAS DE INTERAÇÃO (LIKE, FAVORITO, COMENTÁRIO) 👇
+
+model ReceitaLike {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  receitaId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  receita   Receita  @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, receitaId]) // Garante que 1 usuário só dá 1 like por receita
+  @@map("tb_receita_likes")
+}
+
+model ReceitaFavorita {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  receitaId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  receita   Receita  @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, receitaId]) // Garante que 1 usuário só favorita 1 vez
+  @@map("tb_receita_favoritas")
+}
+
+model ComentarioReceita {
+  id          Int      @id @default(autoincrement())
+  texto       String   @db.Text
+  dataCriacao DateTime @default(now())
+  
+  usuarioId   Int
+  receitaId   Int
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  receita     Receita  @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+
+  @@map("tb_comentarios_receita")
 }
 
 model DiarioDiario {
@@ -119,8 +172,9 @@ enum FormaPagamento {
 }
 
 enum StatusAgendamento {
+  DISPONIVEL           // 👈 NOVO STATUS (Horário livre criado pela nutri)
   AGUARDANDO_PAGAMENTO
-  AGENDADO             // Adicionei esse status comum
+  AGENDADO             
   CONFIRMADO
   REALIZADO
   CANCELADO_COM_CREDITO

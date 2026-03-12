@@ -3,12 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Scr
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-
-// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
+import { Linking } from 'react-native'; // 👈 Linking já estava aqui, perfeito!
 import api from '../services/api'; 
-
-// ❌ REMOVEMOS: import axios ...
-// ❌ REMOVEMOS: const API_URL = ...
 
 export function Home({ route, navigation }: any) {
   const { nome, id } = route.params || { nome: 'Visitante', id: 0 };
@@ -20,7 +16,6 @@ export function Home({ route, navigation }: any) {
     if (!id) return;
     try {
       setLoading(true);
-      // 👇 USAMOS api.get NA ROTA '/agendamentos/...'
       const response = await api.get(`/agendamentos/${id}`);
       
       if (response.data.dataHoraConsulta) {
@@ -51,7 +46,6 @@ export function Home({ route, navigation }: any) {
           text: "Sim", style: 'destructive',
           onPress: async () => {
             try {
-              // 👇 USAMOS api.patch NA ROTA DE CANCELAR
               await api.patch(`/agendamentos/${consulta.id}/cancelar`);
               carregarDados();
             } catch (error) {
@@ -73,7 +67,7 @@ export function Home({ route, navigation }: any) {
 
   return (
     <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
         {/* CABEÇALHO */}
         <View style={styles.header}>
@@ -107,6 +101,18 @@ export function Home({ route, navigation }: any) {
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>{consulta.status.replace('_', ' ')}</Text>
               </View>
+
+              {/* 👇 BOTÃO DO MEET AQUI 👇 */}
+              {consulta.tipoConsulta === 'ONLINE' && consulta.linkMeet && (
+                <TouchableOpacity 
+                  style={styles.meetBtn}
+                  onPress={() => Linking.openURL(consulta.linkMeet)}
+                >
+                  <Ionicons name="videocam" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.meetBtnText}>ENTRAR NA REUNIÃO (MEET)</Text>
+                </TouchableOpacity>
+              )}
+              {/* 👆 FIM DO BOTÃO DO MEET 👆 */}
               
               <TouchableOpacity style={styles.cancelLink} onPress={handleCancelar}>
                 <Text style={styles.cancelText}>Cancelar agendamento</Text>
@@ -190,6 +196,20 @@ const styles = StyleSheet.create({
   
   badgeContainer: { backgroundColor: '#FFF3E0', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginBottom: 15 },
   badgeText: { color: '#F57C00', fontWeight: 'bold', fontSize: 12 },
+
+  // 👇 ESTILOS DO NOVO BOTÃO DO MEET
+  meetBtn: {
+    backgroundColor: '#2F9F85',
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 15,
+    elevation: 2
+  },
+  meetBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 },
 
   cancelLink: { padding: 5 },
   cancelText: { color: '#E83F5B', fontSize: 14 },

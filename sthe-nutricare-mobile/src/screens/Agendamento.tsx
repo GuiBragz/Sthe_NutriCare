@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api'; 
@@ -8,58 +7,64 @@ import api from '../services/api';
 export function Agendamento({ route, navigation }: any) {
   const { usuarioId } = route.params;
 
-  const [dataConsulta, setDataConsulta] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
-  const [mode, setMode] = useState<'date' | 'time'>('date'); 
+  const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'ONLINE'>('PRESENCIAL');
   const [pagamento, setPagamento] = useState('PIX');
   
-  // 👇 NOVO ESTADO PARA O TIPO DE CONSULTA
-  const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'ONLINE'>('PRESENCIAL');
-  const [loading, setLoading] = useState(false);
+  // ESTADOS PARA AS VAGAS REAIS DO BANCO DE DADOS
+  const [vagas, setVagas] = useState<any[]>([]);
+  const [vagaSelecionada, setVagaSelecionada] = useState<any>(null);
+  const [loadingVagas, setLoadingVagas] = useState(false);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
 
-  const onChange = (event: any, selectedDate?: Date) => {
-    setShowPicker(false);
-    if (selectedDate) setDataConsulta(selectedDate);
-  };
+  // Sempre que mudar o "Tipo", busca as vagas daquele tipo
+  useEffect(() => {
+    buscarVagasLivres();
+  }, [tipoConsulta]);
 
-  const showMode = (currentMode: 'date' | 'time') => {
-    setMode(currentMode);
-    setShowPicker(true);
-  };
-
-  async function handleAgendar() {
-    // Validação básica de horário (opcional)
-    const hora = dataConsulta.getHours();
-    if (hora < 8 || hora > 18) {
-       return Alert.alert("Atenção", "Nosso horário de atendimento é das 08h às 18h.");
-    }
-
-    setLoading(true);
+  async function buscarVagasLivres() {
+    setLoadingVagas(true);
+    setVagaSelecionada(null); // Reseta a vaga se o usuário mudar de Online pra Presencial
     try {
-      await api.post('/agendamentos', {
-        usuarioId: usuarioId,
-        dataHora: dataConsulta.toISOString(),
-        formaPagamento: pagamento,
-        tipoConsulta: tipoConsulta // 👇 Enviando a escolha do usuário
-      });
-
-      Alert.alert('Sucesso! 🎉', 'Agendamento realizado com sucesso.');
-      navigation.goBack(); 
+      const response = await api.get(`/agendamentos/vagas?tipo=${tipoConsulta}`);
+      setVagas(response.data);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível agendar. Tente outro horário.');
+      console.log('Erro ao buscar vagas:', error);
     } finally {
-      setLoading(false);
+      setLoadingVagas(false);
     }
   }
 
-  const diaFormatado = dataConsulta.toLocaleDateString('pt-BR');
-  const horaFormatada = dataConsulta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  async function handleAgendar() {
+    if (!vagaSelecionada) {
+      return Alert.alert("Atenção", "Por favor, selecione um horário disponível.");
+    }
+
+    setLoadingSubmit(true);
+    try {
+      // Manda a hora exata da vaga que a nutri criou
+      await api.post('/agendamentos', {
+        usuarioId: usuarioId,
+        dataHora: vagaSelecionada.dataHoraConsulta,
+        formaPagamento: pagamento,
+        tipoConsulta: tipoConsulta 
+      });
+
+      Alert.alert('Sucesso! 🎉', 'Agendamento reservado com sucesso.');
+      navigation.goBack(); 
+    } catch (error: any) {
+      const msgErro = error.response?.data?.erro || 'Erro ao realizar agendamento.';
+      Alert.alert('Ops!', msgErro);
+      buscarVagasLivres(); // Se alguém pegou a vaga antes, atualiza a lista!
+    } finally {
+      setLoadingSubmit(false);
+    }
+  }
 
   return (
     <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* Cabeçalho */}
+        {/* CABEÇALHO */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#A555B9" />
@@ -67,7 +72,7 @@ export function Agendamento({ route, navigation }: any) {
           <Text style={styles.title}>Nova Consulta</Text>
         </View>
 
-        {/* --- SELEÇÃO DE TIPO (NOVO) --- */}
+        {/* --- 1. TIPO DE ATENDIMENTO --- */}
         <Text style={styles.sectionLabel}>1. TIPO DE ATENDIMENTO</Text>
         <View style={styles.typeContainer}>
            <TouchableOpacity 
@@ -87,54 +92,58 @@ export function Agendamento({ route, navigation }: any) {
            </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>2. QUANDO SERÁ?</Text>
-        
-        {/* SELETORES DE DATA E HORA */}
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.selectorCard} onPress={() => showMode('date')}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="calendar-outline" size={24} color="#A555B9" />
-            </View>
-            <Text style={styles.selectorLabel}>DATA</Text>
-            <Text style={styles.selectorValue}>{diaFormatado}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.selectorCard} onPress={() => showMode('time')}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="time-outline" size={24} color="#2F9F85" />
-            </View>
-            <Text style={styles.selectorLabel}>HORÁRIO</Text>
-            <Text style={styles.selectorValue}>{horaFormatada}</Text>
-          </TouchableOpacity>
+        {/* INFO DO LOCAL */}
+        <View style={styles.infoBox}>
+            {tipoConsulta === 'PRESENCIAL' ? (
+                <>
+                    <Ionicons name="location-sharp" size={18} color="#A555B9" />
+                    <Text style={styles.infoText}>Av. Boa Viagem, 1234, Sala 101 - Recife/PE</Text>
+                </>
+            ) : (
+                <>
+                    <Ionicons name="logo-google" size={18} color="#A555B9" />
+                    <Text style={styles.infoText}>O link do Google Meet será enviado antes da consulta.</Text>
+                </>
+            )}
         </View>
 
-        {showPicker && (
-          <DateTimePicker
-            value={dataConsulta}
-            mode={mode}
-            is24Hour={true}
-            display="default"
-            onChange={onChange}
-            minimumDate={new Date()}
-          />
-        )}
-
-        {/* INFO DO LOCAL (NOVO) */}
-        {tipoConsulta === 'PRESENCIAL' ? (
-             <View style={styles.infoBox}>
-                <Ionicons name="location-sharp" size={16} color="#666" />
-                <Text style={styles.infoText}>Av. Boa Viagem, 1234, Sala 101 - Recife/PE</Text>
-             </View>
-        ) : (
-             <View style={styles.infoBox}>
-                <Ionicons name="logo-google" size={16} color="#666" />
-                <Text style={styles.infoText}>O link do Google Meet será enviado após confirmação.</Text>
-             </View>
-        )}
-
-        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>3. PAGAMENTO VIA:</Text>
+        {/* --- 2. HORÁRIOS DISPONÍVEIS --- */}
+        <Text style={[styles.sectionLabel, { marginTop: 25 }]}>2. HORÁRIOS DISPONÍVEIS</Text>
         
-        {/* OPÇÕES DE PAGAMENTO */}
+        {loadingVagas ? (
+          <ActivityIndicator size="large" color="#A555B9" style={{ marginVertical: 20 }} />
+        ) : vagas.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="calendar-clear-outline" size={40} color="#CCC" />
+            <Text style={styles.emptyText}>Nenhuma vaga liberada para consultas {tipoConsulta.toLowerCase()} no momento.</Text>
+          </View>
+        ) : (
+          <View style={styles.vagasGrid}>
+            {vagas.map((vaga) => {
+               // Formata a data e hora vinda do banco
+               const data = new Date(vaga.dataHoraConsulta).toLocaleDateString('pt-BR');
+               const hora = new Date(vaga.dataHoraConsulta).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+               const isSelected = vagaSelecionada?.id === vaga.id;
+
+               return (
+                 <TouchableOpacity 
+                   key={vaga.id}
+                   style={[styles.vagaCard, isSelected && styles.vagaCardSelected]}
+                   onPress={() => setVagaSelecionada(vaga)}
+                 >
+                   <Ionicons name={isSelected ? "checkmark-circle" : "time-outline"} size={20} color={isSelected ? "#FFF" : "#A555B9"} />
+                   <View>
+                     <Text style={[styles.vagaData, isSelected && {color:'#FFF'}]}>{data}</Text>
+                     <Text style={[styles.vagaHora, isSelected && {color:'#FFF'}]}>{hora}</Text>
+                   </View>
+                 </TouchableOpacity>
+               );
+            })}
+          </View>
+        )}
+
+        {/* --- 3. PAGAMENTO --- */}
+        <Text style={[styles.sectionLabel, { marginTop: 25 }]}>3. PAGAMENTO VIA:</Text>
         <View style={styles.paymentContainer}>
           <TouchableOpacity 
             style={[styles.payOption, pagamento === 'PIX' && styles.payOptionSelected]}
@@ -153,20 +162,24 @@ export function Agendamento({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* INFO DE VALOR */}
+        {/* VALOR DA CONSULTA */}
         <View style={styles.valorCard}>
           <Text style={styles.valorLabel}>Valor da Consulta:</Text>
           <Text style={styles.valorTotal}>R$ 150,00</Text>
         </View>
 
         {/* BOTÃO CONFIRMAR */}
-        <TouchableOpacity style={styles.confirmButtonContainer} onPress={handleAgendar} disabled={loading}>
+        <TouchableOpacity 
+          style={[styles.confirmButtonContainer, (!vagaSelecionada || loadingSubmit) && { opacity: 0.6 }]} 
+          onPress={handleAgendar} 
+          disabled={!vagaSelecionada || loadingSubmit}
+        >
           <LinearGradient 
             colors={['#A555B9', '#2F9F85']} 
             start={{x:0, y:0}} end={{x:1, y:1}} 
             style={styles.gradientButton}
           >
-            {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.confirmText}>CONFIRMAR AGENDAMENTO</Text>}
+            {loadingSubmit ? <ActivityIndicator color="#FFF" /> : <Text style={styles.confirmText}>RESERVAR HORÁRIO</Text>}
           </LinearGradient>
         </TouchableOpacity>
 
@@ -178,47 +191,36 @@ export function Agendamento({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingTop: 50, paddingBottom: 50 },
-  
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   backBtn: { padding: 8, backgroundColor: '#FFF', borderRadius: 10, marginRight: 15, elevation: 2 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
-
-  sectionLabel: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 10, marginTop: 15, letterSpacing: 1 },
-
-  // --- ESTILOS DO TIPO DE CONSULTA ---
+  sectionLabel: { fontSize: 13, fontWeight: 'bold', color: '#666', marginBottom: 10, letterSpacing: 1 },
+  
   typeContainer: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   typeBtn: { flex: 1, backgroundColor: '#FFF', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 2, borderColor: '#DDD', elevation: 2 },
   typeBtnSelected: { backgroundColor: '#A555B9', borderColor: '#A555B9' },
   typeText: { fontSize: 10, fontWeight: 'bold', color: '#999', marginTop: 5 },
   typeTextSelected: { color: '#FFF' },
-  
-  infoBox: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 10 },
-  infoText: { fontSize: 12, color: '#666', fontStyle: 'italic' },
 
-  row: { flexDirection: 'row', gap: 15 },
-  
-  selectorCard: { 
-    flex: 1, backgroundColor: '#FFF', borderRadius: 20, padding: 20, 
-    alignItems: 'center', justifyContent: 'center',
-    elevation: 4, shadowColor: '#000', shadowOffset: {width:0, height:2}, shadowOpacity: 0.1, shadowRadius: 4
-  },
-  iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  selectorLabel: { fontSize: 12, color: '#999', fontWeight: 'bold', marginBottom: 5 },
-  selectorValue: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  infoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, padding: 15, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12, borderWidth: 1, borderColor: '#FFF' },
+  infoText: { fontSize: 12, color: '#555', fontStyle: 'italic', flex: 1 },
 
+  // Estilos da Lista de Vagas
+  emptyBox: { backgroundColor: '#FFF', padding: 30, borderRadius: 15, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CCC' },
+  emptyText: { textAlign: 'center', color: '#999', marginTop: 10 },
+  vagasGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  vagaCard: { width: '48%', backgroundColor: '#FFF', padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 2, borderColor: '#F0E6F5', elevation: 1 },
+  vagaCardSelected: { backgroundColor: '#A555B9', borderColor: '#A555B9' },
+  vagaData: { fontSize: 12, color: '#666', fontWeight: 'bold' },
+  vagaHora: { fontSize: 16, color: '#333', fontWeight: 'bold' },
+  
   paymentContainer: { flexDirection: 'row', gap: 15 },
-  payOption: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    padding: 15, backgroundColor: '#FFF', borderRadius: 15, borderWidth: 2, borderColor: '#F0E6F5'
-  },
+  payOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 15, backgroundColor: '#FFF', borderRadius: 15, borderWidth: 2, borderColor: '#F0E6F5' },
   payOptionSelected: { backgroundColor: '#A555B9', borderColor: '#A555B9' },
   payText: { fontWeight: 'bold', color: '#236b80' },
   payTextSelected: { color: '#FFF' },
 
-  valorCard: { 
-    marginTop: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.6)', padding: 20, borderRadius: 15, borderWidth: 1, borderColor: '#FFF'
-  },
+  valorCard: { marginTop: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)', padding: 20, borderRadius: 15, borderWidth: 1, borderColor: '#FFF' },
   valorLabel: { fontSize: 16, color: '#333' },
   valorTotal: { fontSize: 22, fontWeight: 'bold', color: '#2F9F85' },
 

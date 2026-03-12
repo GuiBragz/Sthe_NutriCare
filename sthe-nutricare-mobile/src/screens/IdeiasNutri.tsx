@@ -1,165 +1,250 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import api from '../services/api';
 
-// Dados Fakes (No futuro viriam do Banco/API)
-const RECEITAS = [
-  {
-    id: '1',
-    titulo: 'Crepioca de Frango',
-    categoria: 'Café da Manhã',
-    tempo: '10 min',
-    calorias: '250 kcal',
-    imagem: 'https://img.freepik.com/fotos-premium/panquecas-frias-com-recheio-de-frango-e-cogumelos-crepioca-brasileira_121287-175.jpg',
-    ingredientes: ['1 ovo', '2 colheres de goma de tapioca', 'Frango desfiado', 'Sal a gosto'],
-    preparo: 'Misture o ovo e a goma. Coloque na frigideira. Quando firmar, adicione o frango e feche.'
-  },
-  {
-    id: '2',
-    titulo: 'Suco Detox Verde',
-    categoria: 'Bebidas',
-    tempo: '5 min',
-    calorias: '120 kcal',
-    imagem: 'https://img.freepik.com/fotos-gratis/smoothie-de-verde-fresco-em-vidro_144627-39396.jpg',
-    ingredientes: ['1 folha de couve', '1 maçã', '1 pedaço de gengibre', '200ml de água de coco'],
-    preparo: 'Bata tudo no liquidificador por 2 minutos. Coe se preferir e sirva gelado.'
-  },
-  {
-    id: '3',
-    titulo: 'Salada de Grão de Bico',
-    categoria: 'Almoço',
-    tempo: '15 min',
-    calorias: '320 kcal',
-    imagem: 'https://img.freepik.com/fotos-gratis/salada-de-legumes-fresca-com-grao-de-bico-em-uma-tigela_2829-19642.jpg',
-    ingredientes: ['200g grão de bico cozido', 'Tomate cereja', 'Pepino', 'Azeite e Limão'],
-    preparo: 'Misture todos os ingredientes em uma tigela. Tempere com azeite, sal e limão.'
-  },
-];
+export function IdeiasNutri({ route }: any) {
+  const usuarioId = route.params?.usuarioId || 1;
 
-export function IdeiasNutri() {
-  const [modalVisible, setModalVisible] = useState(false);
+  const [receitas, setReceitas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ESTADOS DA BUSCA E FILTRO
+  const [busca, setBusca] = useState('');
+  const [mostrarFavoritos, setMostrarFavoritos] = useState(false);
+
   const [receitaSelecionada, setReceitaSelecionada] = useState<any>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [comentarios, setComentarios] = useState<any[]>([]);
+  const [novoComentario, setNovoComentario] = useState('');
+  const [loadingComentarios, setLoadingComentarios] = useState(false);
 
-  function abrirReceita(item: any) {
-    setReceitaSelecionada(item);
-    setModalVisible(true);
+  useFocusEffect(useCallback(() => { carregarFeed(); }, []));
+
+  async function carregarFeed() {
+    setLoading(true);
+    try {
+      const response = await api.get(`/receitas?usuarioId=${usuarioId}`);
+      setReceitas(response.data);
+    } catch (error) {
+      console.log('Erro ao carregar feed:', error);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity style={styles.card} onPress={() => abrirReceita(item)}>
-      <Image source={{ uri: item.imagem }} style={styles.cardImage} />
+  async function handleLike(id: number, index: number) {
+    const novasReceitas = [...receitas];
+    const receita = novasReceitas[index];
+    receita.curtidoPorMim = !receita.curtidoPorMim;
+    receita.totalLikes += receita.curtidoPorMim ? 1 : -1;
+    setReceitas(novasReceitas);
+    try { await api.post(`/receitas/${id}/like`, { usuarioId }); } 
+    catch (error) { carregarFeed(); }
+  }
+
+  async function handleFavorito(id: number, index: number) {
+    const novasReceitas = [...receitas];
+    const receita = novasReceitas[index];
+    receita.favoritoPorMim = !receita.favoritoPorMim;
+    setReceitas(novasReceitas);
+    try { await api.post(`/receitas/${id}/favorito`, { usuarioId }); } 
+    catch (error) { carregarFeed(); }
+  }
+
+  async function abrirReceita(receita: any) {
+    setReceitaSelecionada(receita);
+    setModalVisible(true);
+    carregarComentarios(receita.id);
+  }
+
+  async function carregarComentarios(id: number) {
+    setLoadingComentarios(true);
+    try {
+      const response = await api.get(`/receitas/${id}/comentarios`);
+      setComentarios(response.data);
+    } catch (error) {} 
+    finally { setLoadingComentarios(false); }
+  }
+
+  async function enviarComentario() {
+    if (!novoComentario.trim()) return;
+    try {
+      const response = await api.post(`/receitas/${receitaSelecionada.id}/comentarios`, { usuarioId, texto: novoComentario });
+      setComentarios([...comentarios, response.data]);
+      setNovoComentario('');
+      setReceitas(receitas.map(r => r.id === receitaSelecionada.id ? { ...r, totalComentarios: r.totalComentarios + 1 } : r));
+    } catch (error) { Alert.alert("Erro", "Não foi possível comentar."); }
+  }
+
+  // LÓGICA DO FILTRO E BUSCA
+  const receitasFiltradas = receitas.filter(receita => {
+    const matchBusca = receita.titulo.toLowerCase().includes(busca.toLowerCase());
+    const matchFavorito = mostrarFavoritos ? receita.favoritoPorMim : true;
+    return matchBusca && matchFavorito;
+  });
+
+  const renderItem = ({ item, index }: any) => (
+    <View style={styles.card}>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => abrirReceita(item)}>
+        <Image source={{ uri: item.fotoUrl || 'https://via.placeholder.com/300' }} style={styles.cardImage} />
+        <View style={styles.badgeCategoria}><Text style={styles.badgeText}>{item.categoria.toUpperCase()}</Text></View>
+      </TouchableOpacity>
+
       <View style={styles.cardContent}>
-        <View style={styles.tagContainer}>
-          <Text style={styles.tagText}>{item.categoria}</Text>
-        </View>
-        <Text style={styles.cardTitle}>{item.titulo}</Text>
-        <View style={styles.cardFooter}>
-          <View style={styles.iconRow}>
-            <Ionicons name="time-outline" size={14} color="#666" />
-            <Text style={styles.footerText}>{item.tempo}</Text>
+        <Text style={styles.cardTitulo}>{item.titulo}</Text>
+        <Text style={styles.cardCalorias}>🔥 {item.caloriasTotais} kcal</Text>
+        
+        <View style={styles.interacoesRow}>
+          <View style={{ flexDirection: 'row', gap: 15 }}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(item.id, index)}>
+              <Ionicons name={item.curtidoPorMim ? "heart" : "heart-outline"} size={26} color={item.curtidoPorMim ? "#E83F5B" : "#333"} />
+              <Text style={styles.actionText}>{item.totalLikes}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => abrirReceita(item)}>
+              <Ionicons name="chatbubble-outline" size={24} color="#333" />
+              <Text style={styles.actionText}>{item.totalComentarios}</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.iconRow}>
-            <Ionicons name="flame-outline" size={14} color="#E83F5B" />
-            <Text style={[styles.footerText, { color: '#E83F5B' }]}>{item.calorias}</Text>
-          </View>
+          <TouchableOpacity onPress={() => handleFavorito(item.id, index)}>
+            <Ionicons name={item.favoritoPorMim ? "bookmark" : "bookmark-outline"} size={24} color={item.favoritoPorMim ? "#A555B9" : "#333"} />
+          </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Ideias da Nutri 💡</Text>
-        <Text style={styles.subtitle}>Receitas práticas pro seu dia a dia</Text>
+    <LinearGradient colors={['#F9F9F9', '#F0E6F5']} style={styles.container}>
+      <Text style={styles.title}>Ideias da Nutri 👩‍🍳</Text>
+
+      {/* BARRA DE BUSCA E FILTRO */}
+      <View style={styles.filterContainer}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={20} color="#999" style={{ marginRight: 8 }} />
+          <TextInput style={styles.searchInput} placeholder="Buscar receita..." value={busca} onChangeText={setBusca} />
+        </View>
+        <TouchableOpacity style={[styles.favFilterBtn, mostrarFavoritos && styles.favFilterBtnActive]} onPress={() => setMostrarFavoritos(!mostrarFavoritos)}>
+          <Ionicons name={mostrarFavoritos ? "bookmark" : "bookmark-outline"} size={20} color={mostrarFavoritos ? "#FFF" : "#A555B9"} />
+        </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={RECEITAS}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#A555B9" style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList 
+          data={receitasFiltradas}
+          renderItem={renderItem}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma receita encontrada.</Text>}
+        />
+      )}
 
-      {/* MODAL DE DETALHES */}
-      <Modal
-        animationType="slide"
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      {/* MODAL DA RECEITA */}
+      <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
         {receitaSelecionada && (
-          <View style={{ flex: 1 }}>
-            <Image source={{ uri: receitaSelecionada.imagem }} style={styles.modalImage} />
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-              <Ionicons name="close-circle" size={40} color="#FFF" />
-            </TouchableOpacity>
-            
-            <ScrollView style={styles.modalContent}>
-              <Text style={styles.modalCategory}>{receitaSelecionada.categoria}</Text>
-              <Text style={styles.modalTitle}>{receitaSelecionada.titulo}</Text>
-              
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <Ionicons name="time" size={20} color="#A555B9" />
-                  <Text style={styles.statLabel}>{receitaSelecionada.tempo}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Ionicons name="flame" size={20} color="#E83F5B" />
-                  <Text style={styles.statLabel}>{receitaSelecionada.calorias}</Text>
-                </View>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeaderImage}>
+              <Image source={{ uri: receitaSelecionada.fotoUrl || 'https://via.placeholder.com/300' }} style={styles.modalImage} />
+              <LinearGradient colors={['rgba(0,0,0,0.6)', 'transparent']} style={styles.modalGradientTop}>
+                <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
+                  <Ionicons name="arrow-back" size={28} color="#FFF" />
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitulo}>{receitaSelecionada.titulo}</Text>
+              <View style={styles.tagsRow}>
+                <Text style={styles.tag}>🍽️ {receitaSelecionada.categoria}</Text>
+                <Text style={styles.tag}>🔥 {receitaSelecionada.caloriasTotais} kcal</Text>
               </View>
-
               <Text style={styles.sectionTitle}>Ingredientes</Text>
-              {receitaSelecionada.ingredientes.map((ing: string, index: number) => (
-                <Text key={index} style={styles.ingredientText}>• {ing}</Text>
-              ))}
-
-              <Text style={styles.sectionTitle}>Modo de Preparo</Text>
-              <Text style={styles.preparoText}>{receitaSelecionada.preparo}</Text>
+              <Text style={styles.textContent}>{receitaSelecionada.ingredientes}</Text>
+              <Text style={styles.sectionTitle}>Modo de Preparação</Text>
+              <Text style={styles.textContent}>{receitaSelecionada.modoPreparo}</Text>
+              <View style={styles.divider} />
               
-              <View style={{height: 50}} />
+              <Text style={styles.sectionTitle}>Comentários ({comentarios.length})</Text>
+              {loadingComentarios ? <ActivityIndicator size="small" color="#A555B9" /> : comentarios.length === 0 ? (
+                <Text style={styles.emptyComentario}>Nenhum comentário ainda.</Text>
+              ) : (
+                comentarios.map(com => (
+                  <View key={com.id} style={styles.comentarioBox}>
+                    <View style={[styles.avatarMini, com.usuario?.tipo === 'NUTRICIONISTA' && {backgroundColor: '#2F9F85'}]}>
+                      <Ionicons name="person" size={16} color="#FFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.comentarioNome}>
+                        {com.usuario?.nomeCompleto || 'Usuário'} 
+                        {com.usuario?.tipo === 'NUTRICIONISTA' && <Text style={{color: '#2F9F85'}}> (Nutri)</Text>}
+                      </Text>
+                      <Text style={styles.comentarioTexto}>{com.texto}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+              <View style={{ height: 40 }} /> 
             </ScrollView>
+
+            <View style={styles.commentInputContainer}>
+              <TextInput style={styles.commentInput} placeholder="Comente algo..." value={novoComentario} onChangeText={setNovoComentario} />
+              <TouchableOpacity style={styles.sendBtn} onPress={enviarComentario}>
+                <Ionicons name="send" size={20} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </Modal>
-
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { padding: 24, paddingTop: 60, paddingBottom: 10 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#A555B9' },
-  subtitle: { fontSize: 16, color: '#666', marginTop: 5 },
-  
-  listContent: { padding: 24, paddingTop: 10 },
-  
-  // Card
-  card: { backgroundColor: '#FFF', borderRadius: 20, marginBottom: 20, elevation: 4, overflow: 'hidden' },
-  cardImage: { width: '100%', height: 150 },
-  cardContent: { padding: 15 },
-  tagContainer: { backgroundColor: '#E0F2F1', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginBottom: 8 },
-  tagText: { color: '#2F9F85', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-  cardFooter: { flexDirection: 'row', gap: 15 },
-  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  footerText: { fontSize: 12, color: '#666', fontWeight: 'bold' },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 60 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#A555B9', marginBottom: 15 },
+  emptyText: { textAlign: 'center', color: '#999', marginTop: 50 },
 
-  // Modal
-  modalImage: { width: '100%', height: 300 },
-  closeBtn: { position: 'absolute', top: 40, right: 20 },
-  modalContent: { flex: 1, backgroundColor: '#FFF', marginTop: -30, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 30 },
-  modalCategory: { color: '#2F9F85', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 12, marginBottom: 5 },
-  modalTitle: { fontSize: 26, fontWeight: 'bold', color: '#333', marginBottom: 20 },
-  
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#F9F9F9', padding: 15, borderRadius: 15, marginBottom: 25 },
-  statBox: { alignItems: 'center', gap: 5 },
-  statLabel: { fontWeight: 'bold', color: '#555' },
+  filterContainer: { flexDirection: 'row', marginBottom: 20, gap: 10 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 15, paddingHorizontal: 15, elevation: 2 },
+  searchInput: { flex: 1, height: 45, color: '#333' },
+  favFilterBtn: { width: 45, height: 45, backgroundColor: '#FFF', borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 2, borderWidth: 1, borderColor: '#A555B9' },
+  favFilterBtnActive: { backgroundColor: '#A555B9' },
 
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#A555B9', marginBottom: 10, marginTop: 10 },
-  ingredientText: { fontSize: 16, color: '#444', marginBottom: 5, lineHeight: 24 },
-  preparoText: { fontSize: 16, color: '#444', lineHeight: 26 },
+  card: { backgroundColor: '#FFF', borderRadius: 20, marginBottom: 25, elevation: 5, overflow: 'hidden' },
+  cardImage: { width: '100%', height: 220, backgroundColor: '#EEE' },
+  badgeCategoria: { position: 'absolute', top: 15, left: 15, backgroundColor: 'rgba(47, 159, 133, 0.9)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
+  badgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
+  cardContent: { padding: 20 },
+  cardTitulo: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 5 },
+  cardCalorias: { fontSize: 14, color: '#666', marginBottom: 15, fontWeight: '500' },
+  interacoesRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderColor: '#F0F0F0', paddingTop: 15 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  actionText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+
+  modalContainer: { flex: 1, backgroundColor: '#FFF' },
+  modalHeaderImage: { width: '100%', height: 300, position: 'relative' },
+  modalImage: { width: '100%', height: '100%' },
+  modalGradientTop: { position: 'absolute', top: 0, width: '100%', height: 100, padding: 20, paddingTop: 50 },
+  closeBtn: { width: 40, height: 40, justifyContent: 'center' },
+  modalBody: { flex: 1, padding: 24, marginTop: -30, backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
+  modalTitulo: { fontSize: 26, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+  tagsRow: { flexDirection: 'row', gap: 10, marginBottom: 25 },
+  tag: { backgroundColor: '#F0E6F5', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, color: '#A555B9', fontWeight: 'bold', fontSize: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2F9F85', marginBottom: 10 },
+  textContent: { fontSize: 15, color: '#555', lineHeight: 24, marginBottom: 25 },
+  divider: { height: 1, backgroundColor: '#EEE', marginVertical: 20 },
+
+  emptyComentario: { fontStyle: 'italic', color: '#999', marginBottom: 20 },
+  comentarioBox: { flexDirection: 'row', gap: 10, marginBottom: 15 },
+  avatarMini: { width: 35, height: 35, borderRadius: 17.5, backgroundColor: '#CCC', justifyContent: 'center', alignItems: 'center' },
+  comentarioNome: { fontWeight: 'bold', color: '#333', fontSize: 14, marginBottom: 2 },
+  comentarioTexto: { color: '#666', fontSize: 14, lineHeight: 20 },
+  commentInputContainer: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#FFF', borderTopWidth: 1, borderColor: '#EEE' },
+  commentInput: { flex: 1, backgroundColor: '#F5F5F5', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10, color: '#333' },
+  sendBtn: { backgroundColor: '#A555B9', width: 45, height: 45, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginLeft: 10 }
 });

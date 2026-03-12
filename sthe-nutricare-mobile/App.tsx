@@ -14,15 +14,16 @@ import { CadastroStep1 } from './src/screens/CadastroStep1';
 import { CadastroStep2 } from './src/screens/CadastroStep2';
 
 // Telas Principais DO PACIENTE (Fluxo Tabs)
-import { Home } from './src/screens/Home'; // Agendamentos
+import { Home } from './src/screens/Home'; 
 import { PlanoAlimentar } from './src/screens/PlanoAlimentar';
 import { FeedHome } from './src/screens/FeedHome';
 import { IdeiasNutri } from './src/screens/IdeiasNutri';
 import { Desempenho } from './src/screens/Desempenho';
 
-// Telas Principais DA NUTRICIONISTA (Novas)
+// Telas Principais DA NUTRICIONISTA (Fluxo Tabs)
 import { NutriDashboard } from './src/screens/NutriDashboard';
 import { NutriPacientes } from './src/screens/NutriPacientes';
+import { NutriIdeias } from './src/screens/NutriIdeias'; // 👈 IMPORTADO AQUI
 
 // Telas Secundárias (Abrem por cima das abas)
 import { Agendamento } from './src/screens/Agendamento';
@@ -31,6 +32,25 @@ import { Perfil } from './src/screens/Perfil';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// --- ESTILO FLUTUANTE PARA AS BARRAS ---
+const floatingTabStyle = {
+  position: 'absolute' as const,
+  bottom: 25,
+  left: 20,
+  right: 20,
+  elevation: 8, // Sombra Android
+  shadowColor: '#000', // Sombra iOS
+  shadowOpacity: 0.1,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 5 },
+  backgroundColor: '#FFF',
+  borderRadius: 30, // Pontas arredondadas
+  height: 70,
+  borderTopWidth: 0,
+  paddingBottom: Platform.OS === 'ios' ? 20 : 0, // Ajuste fino pra iPhone
+  paddingTop: 5,
+};
 
 // --- 1. BARRA DE ABAS DO PACIENTE (Roxo/Lilás) ---
 function MainTabs({ route }: any) {
@@ -44,14 +64,7 @@ function MainTabs({ route }: any) {
         tabBarShowLabel: false,
         tabBarActiveTintColor: '#A555B9',
         tabBarInactiveTintColor: '#C4C4C4',
-        tabBarStyle: {
-          backgroundColor: '#FFF',
-          borderTopWidth: 0,
-          elevation: 5,
-          height: Platform.OS === 'ios' ? 95 : 80,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-          paddingTop: 10,
-        },
+        tabBarStyle: floatingTabStyle, // 👈 Aplicando o estilo flutuante
         tabBarIcon: ({ focused, color }) => {
           let iconName: any;
 
@@ -75,28 +88,22 @@ function MainTabs({ route }: any) {
 }
 
 // --- 2. BARRA DE ABAS DA NUTRI (Verde) ---
-function NutriTabs() {
+function NutriTabs({ route }: any) {
   return (
     <Tab.Navigator
       initialRouteName="Dashboard"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: '#2F9F85', // Verde para diferenciar
+        tabBarActiveTintColor: '#2F9F85', 
         tabBarInactiveTintColor: '#C4C4C4',
-        tabBarStyle: {
-          backgroundColor: '#FFF',
-          borderTopWidth: 0,
-          elevation: 5,
-          height: Platform.OS === 'ios' ? 95 : 80,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-          paddingTop: 10,
-        },
+        tabBarStyle: floatingTabStyle, // 👈 Aplicando o estilo flutuante
         tabBarIcon: ({ focused, color }) => {
           let iconName: any;
 
           if (route.name === 'Dashboard') iconName = focused ? 'calendar' : 'calendar-outline';
           else if (route.name === 'Pacientes') iconName = focused ? 'people' : 'people-outline';
+          else if (route.name === 'Receitas') iconName = focused ? 'restaurant' : 'restaurant-outline'; // Novo ícone
           
           return <Ionicons name={iconName} size={28} color={color} />;
         },
@@ -104,6 +111,7 @@ function NutriTabs() {
     >
       <Tab.Screen name="Dashboard" component={NutriDashboard} />
       <Tab.Screen name="Pacientes" component={NutriPacientes} />
+      <Tab.Screen name="Receitas" component={NutriIdeias} /> 
     </Tab.Navigator>
   );
 }
@@ -133,7 +141,7 @@ export default function App() {
         {/* Aba do Paciente */}
         <Stack.Screen name="MainTabs" component={MainTabs} />
 
-        {/* Aba da Nutricionista (NOVO) */}
+        {/* Aba da Nutricionista */}
         <Stack.Screen name="NutriTabs" component={NutriTabs} />
 
         {/* Telas Comuns */}

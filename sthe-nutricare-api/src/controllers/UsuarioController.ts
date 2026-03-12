@@ -61,7 +61,7 @@ export const criarUsuario = async (req: Request, res: Response) => {
   }
 };
 
-// --- LOGIN (Mantive igual, pois não mudou a lógica) ---
+// --- LOGIN ---
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, senha } = req.body;
@@ -91,9 +91,8 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ erro: 'Erro interno no servidor' });
   }
 };
-// ... (mantenha o código de criarUsuario e login que já estão aí) ...
 
-// 👇 ADICIONE ESTA FUNÇÃO NO FINAL DO ARQUIVO 👇
+// --- BUSCAR USUÁRIO POR ID ---
 export const buscarUsuarioPorId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -114,10 +113,11 @@ export const buscarUsuarioPorId = async (req: Request, res: Response) => {
     return res.status(500).json({ erro: 'Erro ao buscar perfil' });
   }
 };
+
+// --- ATUALIZAR USUÁRIO ---
 export const atualizarUsuario = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    // Adicione 'nascimento' aqui na leitura
     const { nome, telefone, altura, objetivos, sexo, nascimento } = req.body; 
 
     const usuarioAtualizado = await prisma.usuario.update({
@@ -135,5 +135,38 @@ export const atualizarUsuario = async (req: Request, res: Response) => {
     return res.json(usuarioAtualizado);
   } catch (error) {
     return res.status(500).json({ erro: 'Erro ao atualizar perfil' });
+  }
+};
+
+// 👇 NOVA FUNÇÃO: BUSCAR PACIENTES PARA A NUTRI (Com Filtro de Busca) 👇
+export const buscarPacientes = async (req: Request, res: Response) => {
+  try {
+    const { busca } = req.query; // Pega o texto da barra de pesquisa
+
+    const pacientes = await prisma.usuario.findMany({
+      where: {
+        tipo: 'PACIENTE',
+        nomeCompleto: {
+          contains: busca ? String(busca) : '', // Filtra pelo nome
+        }
+      },
+      // O SELECT GARANTE QUE A SENHA NUNCA VÁ PARA O CELULAR DA NUTRI
+      select: {
+        id: true,
+        nomeCompleto: true,
+        email: true,
+        telefone: true,
+        sexo: true,
+        altura: true,
+        dataNascimento: true,
+        objetivos: true,
+        dataCriacao: true
+      },
+      orderBy: { nomeCompleto: 'asc' } // Ordem alfabética
+    });
+
+    return res.json(pacientes);
+  } catch (error) {
+    return res.status(500).json({ erro: 'Erro ao buscar pacientes.' });
   }
 };
