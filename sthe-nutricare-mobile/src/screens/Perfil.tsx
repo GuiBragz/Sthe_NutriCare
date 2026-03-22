@@ -1,14 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-
-// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
 import api from '../services/api'; 
-
-// ❌ REMOVEMOS: import axios ...
-// ❌ REMOVEMOS: const API_URL = ...
 
 export function Perfil({ route, navigation }: any) {
   const { usuarioId } = route.params;
@@ -24,7 +18,6 @@ export function Perfil({ route, navigation }: any) {
 
   const carregarPerfil = async () => {
     try {
-      // 👇 USAMOS api.get NA ROTA '/usuarios/ID'
       const response = await api.get(`/usuarios/${usuarioId}`);
       setPerfil(response.data);
     } catch (error) {
@@ -40,10 +33,8 @@ export function Perfil({ route, navigation }: any) {
     }, [usuarioId])
   );
 
-  // --- FUNÇÃO DE IDADE BLINDADA 🛡️ ---
   function calcularIdadeReal(dataString: string) {
     if (!dataString) return '--';
-
     let diaNasc, mesNasc, anoNasc;
     const limpa = dataString.trim();
 
@@ -66,23 +57,16 @@ export function Perfil({ route, navigation }: any) {
         mesNasc = parseInt(partes[1]) - 1;
         anoNasc = parseInt(partes[2]);
       }
-      else {
-        return dataString; 
-      }
+      else return dataString; 
 
       if (!anoNasc || !mesNasc || !diaNasc) return dataString;
 
       const hoje = new Date();
       let idade = hoje.getFullYear() - anoNasc;
-      const mesAtual = hoje.getMonth();
-      const diaAtual = hoje.getDate();
-
-      if (mesAtual < mesNasc || (mesAtual === mesNasc && diaAtual < diaNasc)) {
+      if (hoje.getMonth() < mesNasc || (hoje.getMonth() === mesNasc && hoje.getDate() < diaNasc)) {
         idade--;
       }
-
       return `${idade} anos`;
-
     } catch (e) {
       return dataString;
     }
@@ -100,7 +84,6 @@ export function Perfil({ route, navigation }: any) {
 
   async function salvarEdicao() {
     try {
-      // 👇 USAMOS api.put NA ROTA '/usuarios/ID'
       await api.put(`/usuarios/${usuarioId}`, {
         nome: editNome,
         altura: editAltura,
@@ -124,27 +107,29 @@ export function Perfil({ route, navigation }: any) {
     ]);
   }
 
-  if (loading) return <ActivityIndicator size="large" color="#A555B9" style={{flex:1}} />;
+  if (loading) return <ActivityIndicator size="large" color="#2E7D32" style={{flex:1, backgroundColor: '#EFEDE7'}} />;
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
         {/* Header */}
         <View style={styles.headerBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-            <Ionicons name="arrow-back" size={24} color="#A555B9" />
+            <Ionicons name="arrow-back" size={24} color="#2E7D32" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Meu Perfil</Text>
           <TouchableOpacity onPress={handleLogout} style={styles.iconBtn}>
-            <Ionicons name="log-out-outline" size={24} color="#E83F5B" />
+            <Ionicons name="log-out-outline" size={24} color="#D32F2F" />
           </TouchableOpacity>
         </View>
 
         {/* Card Principal */}
         <View style={styles.cardProfile}>
           <View style={styles.avatarContainer}>
-            <Ionicons name="person-circle" size={100} color="#C8A2C8" />
+            <View style={styles.avatarCircle}>
+                <Ionicons name="person" size={60} color="#FFF" />
+            </View>
             <View style={styles.camIcon}>
                <Ionicons name="camera" size={16} color="#FFF" />
             </View>
@@ -199,12 +184,7 @@ export function Perfil({ route, navigation }: any) {
       </ScrollView>
 
       {/* --- MODAL DE EDIÇÃO --- */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalView}>
             <Text style={styles.modalTitle}>Editar Dados</Text>
@@ -240,42 +220,48 @@ export function Perfil({ route, navigation }: any) {
           </View>
         </View>
       </Modal>
-
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#EFEDE7' },
   content: { padding: 24, paddingTop: 50 },
   headerBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  iconBtn: { padding: 8, backgroundColor: '#FFF', borderRadius: 12, elevation: 2 },
-  cardProfile: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 25, elevation: 4 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32' },
+  iconBtn: { padding: 8, backgroundColor: '#FFF', borderRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#FFD700' },
+  
+  cardProfile: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 25, elevation: 4, borderWidth: 1, borderColor: '#FFD700' },
   avatarContainer: { marginBottom: 10, position: 'relative' },
-  camIcon: { position: 'absolute', bottom: 5, right: 5, backgroundColor: '#2F9F85', padding: 6, borderRadius: 20, borderWidth: 2, borderColor: '#FFF' },
-  name: { fontSize: 22, fontWeight: 'bold', color: '#A555B9', marginBottom: 5, textAlign: 'center' },
+  avatarCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFD700' },
+  camIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#B8860B', padding: 6, borderRadius: 20, borderWidth: 2, borderColor: '#FFF' },
+  
+  name: { fontSize: 22, fontWeight: 'bold', color: '#2E7D32', marginBottom: 5, textAlign: 'center' },
   email: { fontSize: 14, color: '#666', marginBottom: 20 },
-  divider: { width: '100%', height: 1, backgroundColor: '#F0F0F0', marginBottom: 20 },
+  divider: { width: '100%', height: 1, backgroundColor: '#EFEDE7', marginBottom: 20 },
+  
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   statItem: { alignItems: 'center', flex: 1 },
   statLabel: { fontSize: 10, fontWeight: 'bold', color: '#999', letterSpacing: 1 },
-  statValue: { fontSize: 16, fontWeight: 'bold', color: '#333', marginTop: 5 },
-  statLine: { width: 1, height: '100%', backgroundColor: '#F0F0F0' },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#666', marginBottom: 10, marginLeft: 5 },
-  cardInfo: { backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 15, padding: 15, flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 30 },
-  tag: { backgroundColor: '#2F9F85', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, flexDirection: 'row', alignItems: 'center' },
+  statValue: { fontSize: 16, fontWeight: 'bold', color: '#2E7D32', marginTop: 5 },
+  statLine: { width: 1, height: '100%', backgroundColor: '#EFEDE7' },
+  
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#2E7D32', marginBottom: 10, marginLeft: 5 },
+  cardInfo: { backgroundColor: '#FFF', borderRadius: 15, padding: 15, flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 30, borderWidth: 1, borderColor: '#FFD700' },
+  tag: { backgroundColor: '#2E7D32', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, flexDirection: 'row', alignItems: 'center' },
   tagText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
-  editButton: { borderWidth: 2, borderColor: '#A555B9', borderRadius: 30, padding: 15, alignItems: 'center', backgroundColor: '#FFF' },
-  editButtonText: { color: '#A555B9', fontWeight: 'bold', fontSize: 16 },
+  
+  editButton: { backgroundColor: '#2E7D32', borderRadius: 30, padding: 15, alignItems: 'center', elevation: 2, borderWidth: 1, borderColor: '#FFD700' },
+  editButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalView: { width: '85%', backgroundColor: '#FFF', borderRadius: 20, padding: 25, elevation: 5 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#A555B9', marginBottom: 20, textAlign: 'center' },
-  labelInput: { fontWeight: 'bold', color: '#666', marginTop: 10, marginBottom: 5 },
-  input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 10, backgroundColor: '#F9F9F9', fontSize: 16 },
+  modalView: { width: '85%', backgroundColor: '#EFEDE7', borderRadius: 20, padding: 25, elevation: 5, borderWidth: 1, borderColor: '#FFD700' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 20, textAlign: 'center' },
+  labelInput: { fontWeight: 'bold', color: '#2E7D32', marginTop: 10, marginBottom: 5 },
+  input: { borderWidth: 1, borderColor: '#FFD700', borderRadius: 10, padding: 10, backgroundColor: '#FFF', fontSize: 16, color: '#333' },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25 },
   btnCancel: { flex: 1, alignItems: 'center', padding: 15 },
   btnCancelText: { color: '#666', fontWeight: 'bold' },
-  btnSave: { flex: 1, backgroundColor: '#A555B9', borderRadius: 10, alignItems: 'center', padding: 15 },
+  btnSave: { flex: 1, backgroundColor: '#2E7D32', borderRadius: 10, alignItems: 'center', padding: 15 },
   btnSaveText: { color: '#FFF', fontWeight: 'bold' }
 });

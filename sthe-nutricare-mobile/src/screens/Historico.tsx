@@ -1,8 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient'; // Adicionei o degradê
-import { Ionicons } from '@expo/vector-icons'; // Ícone de voltar
+import { Ionicons } from '@expo/vector-icons';
 
 // 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
 import api from '../services/api'; 
@@ -17,7 +16,6 @@ export function Historico({ route, navigation }: any) {
     useCallback(() => {
       async function carregarHistorico() {
         try {
-          // 👇 USAMOS api.get NA ROTA CENTRALIZADA
           const response = await api.get(`/agendamentos/${usuarioId}/historico`);
           setLista(response.data);
         } catch (error) {
@@ -36,16 +34,16 @@ export function Historico({ route, navigation }: any) {
     const dataFormatada = data.toLocaleDateString('pt-BR');
     const horaFormatada = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    // Define cor baseada no status (Nas cores do novo tema)
-    let corStatus = '#2F9F85'; // Verde (Agendado/Padrão)
+    // Define cor baseada no status (Paleta Verde e Dourada)
+    let corStatus = '#2E7D32'; // Verde (Agendado/Padrão)
     let iconeStatus: any = "calendar";
 
     if (item.status === 'CANCELADO') {
-        corStatus = '#E83F5B'; // Vermelho
+        corStatus = '#D32F2F'; // Vermelho para cancelados
         iconeStatus = "close-circle";
     }
     if (item.status === 'CONCLUIDO') {
-        corStatus = '#A555B9'; // Roxo da marca
+        corStatus = '#B8860B'; // Dourado escuro para concluídos
         iconeStatus = "checkmark-circle";
     }
 
@@ -74,19 +72,19 @@ export function Historico({ route, navigation }: any) {
   };
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.content}>
         
         {/* CABEÇALHO */}
         <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={24} color="#A555B9" />
+                <Ionicons name="arrow-back" size={24} color="#2E7D32" />
             </TouchableOpacity>
-            <Text style={styles.title}>Histórico 📂</Text>
+            <Text style={styles.title}>Histórico</Text>
         </View>
 
         {loading ? (
-            <ActivityIndicator color="#A555B9" style={{ marginTop: 50 }} />
+            <ActivityIndicator color="#2E7D32" style={{ marginTop: 50 }} />
         ) : (
             <FlatList
             data={lista}
@@ -103,27 +101,36 @@ export function Historico({ route, navigation }: any) {
             />
         )}
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#EFEDE7' },
   content: { flex: 1, padding: 24, paddingTop: 50 },
   
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backBtn: { padding: 8, backgroundColor: '#FFF', borderRadius: 10, marginRight: 15, elevation: 2 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  backBtn: { 
+    padding: 8, 
+    backgroundColor: '#FFF', 
+    borderRadius: 10, 
+    marginRight: 15, 
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#FFD700' 
+  },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#2E7D32' },
   
-  // Estilo do Card Novo (Fundo Branco + Sombra)
   card: {
     backgroundColor: '#FFF',
     padding: 15,
     borderRadius: 15,
     marginBottom: 15,
     borderLeftWidth: 5,
-    elevation: 3, // Sombra Android
-    shadowColor: '#000', // Sombra iOS
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 }
@@ -139,7 +146,7 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 10, fontWeight: 'bold', color: '#FFF' },
 
-  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 10 },
+  divider: { height: 1, backgroundColor: '#EFEDE7', marginVertical: 10 },
 
   cardFooter: { flexDirection: 'row', alignItems: 'center' },
   pagamento: { color: '#666', fontSize: 14 },

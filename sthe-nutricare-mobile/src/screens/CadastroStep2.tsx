@@ -1,27 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-
-// 👇 IMPORTA O NOSSO ARQUIVO CENTRALIZADO
 import api from '../services/api'; 
 
-// ❌ REMOVEMOS: import axios ...
-// ❌ REMOVEMOS: const API_URL = ...
-
 export function CadastroStep2({ route, navigation }: any) {
-  // Recebe os dados da tela anterior
   const { dadosPasso1 } = route.params;
 
   const [altura, setAltura] = useState('');
   const [sexo, setSexo] = useState<'M' | 'F' | null>(null);
   const [senha, setSenha] = useState(''); 
-  
-  // Objetivos (Array de strings)
   const [objetivos, setObjetivos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Função para marcar/desmarcar checkbox
   const toggleObjetivo = (obj: string) => {
     if (objetivos.includes(obj)) {
       setObjetivos(objetivos.filter(item => item !== obj));
@@ -31,64 +21,60 @@ export function CadastroStep2({ route, navigation }: any) {
   };
 
   async function handleFinalizar() {
-    if(!altura || !sexo || !senha) return Alert.alert("Falta pouco!", "Preencha altura, sexo e crie uma senha.");
+    if(!altura || !sexo || !senha) return Alert.alert("Falta pouco", "Preencha altura, sexo e crie uma senha.");
 
     setLoading(true);
     try {
-      // Junta tudo num pacotão
       const payload = {
         ...dadosPasso1,
         altura,
         sexo,
         senha,
-        objetivos: objetivos.join(',') // Vira "SAUDE,EMAGRECER"
+        objetivos: objetivos.join(',') 
       };
 
-      // 👇 USAMOS O api.post NA ROTA '/usuarios'
       await api.post('/usuarios', payload);
       
-      Alert.alert("Sucesso! 🎉", "Conta criada. Faça login agora.");
+      Alert.alert("Sucesso!", "Conta criada. Faca login agora.");
       navigation.navigate('Login');
 
     } catch (error) {
       console.log(error);
-      Alert.alert("Erro", "Não foi possível criar a conta. Tente novamente.");
+      Alert.alert("Erro", "Nao foi possivel criar a conta. Tente novamente.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#C8A2C8', '#A555B9']} style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.content}>
         
-        {/* Botão Voltar */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={30} color="#A555B9" />
+          <Ionicons name="arrow-back" size={30} color="#2E7D32" />
         </TouchableOpacity>
 
-        <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={styles.brandTitle}>Sthe<Text style={{color: '#2F9F85'}}>NutriCare</Text></Text>
+        <Image source={require('../../assets/logo_ss_ss.png')} style={styles.logoMonogram} resizeMode="contain" />
+        <Image source={require('../../assets/logo_stheffane_santos_nutricionista.png')} style={styles.logoText} resizeMode="contain" />
 
-        {/* ALTURA */}
         <TextInput 
           style={styles.input} 
           placeholder="SUA ALTURA (ex: 1.75)" 
+          placeholderTextColor="#666"
           value={altura} 
           onChangeText={setAltura} 
           keyboardType="numeric" 
         />
         
-        {/* SENHA */}
         <TextInput 
           style={styles.input} 
           placeholder="CRIE UMA SENHA" 
+          placeholderTextColor="#666"
           secureTextEntry
           value={senha} 
           onChangeText={setSenha} 
         />
 
-        {/* CARD OBJETIVOS */}
         <View style={styles.cardObjetivos}>
           <Text style={styles.cardTitle}>QUAL O SEU OBJETIVO?</Text>
           {['EMAGRECER', 'PERFORMANCE', 'GANHAR MASSA', 'SAUDE'].map((obj) => (
@@ -96,17 +82,16 @@ export function CadastroStep2({ route, navigation }: any) {
               <Ionicons 
                 name={objetivos.includes(obj) ? "checkbox" : "square-outline"} 
                 size={24} 
-                color="#333" 
+                color="#2E7D32" 
               />
               <Text style={styles.checkboxLabel}>{obj}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* SEXO */}
         <View style={styles.sexoContainer}>
           <TouchableOpacity onPress={() => setSexo('F')} style={[styles.sexoBtn, sexo === 'F' && styles.sexoBtnSelected]}>
-            <Ionicons name="female" size={24} color={sexo === 'F' ? "#FFF" : "#A555B9"} />
+            <Ionicons name="female" size={24} color={sexo === 'F' ? "#FFFFFF" : "#2E7D32"} />
           </TouchableOpacity>
           
           <View style={styles.sexoLabelBox}>
@@ -114,54 +99,51 @@ export function CadastroStep2({ route, navigation }: any) {
           </View>
 
           <TouchableOpacity onPress={() => setSexo('M')} style={[styles.sexoBtn, sexo === 'M' && styles.sexoBtnSelected]}>
-            <Ionicons name="male" size={24} color={sexo === 'M' ? "#FFF" : "#A555B9"} />
+            <Ionicons name="male" size={24} color={sexo === 'M' ? "#FFFFFF" : "#2E7D32"} />
           </TouchableOpacity>
         </View>
 
-        {/* BOTÃO FINAL */}
         <TouchableOpacity onPress={handleFinalizar} style={styles.buttonContainer} disabled={loading}>
-          <LinearGradient colors={['#A555B9', '#2F9F85']} start={{x:0, y:0}} end={{x:1, y:1}} style={styles.gradientButton}>
-            {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>CRIAR CONTA</Text>}
-          </LinearGradient>
+          <View style={styles.mainButton}>
+            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>CRIAR CONTA</Text>}
+          </View>
         </TouchableOpacity>
 
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#EFEDE7' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   backButton: { position: 'absolute', top: 50, left: 20 },
-  logo: { width: 100, height: 100, marginBottom: 5 },
-  brandTitle: { fontSize: 24, fontWeight: 'bold', color: '#A555B9', marginBottom: 20 },
+  logoMonogram: { width: 70, height: 70, marginBottom: 5 },
+  logoText: { width: 200, height: 60, marginBottom: 20 },
   
   input: {
-    width: '100%', height: 50, backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: 25, borderWidth: 2, borderColor: '#2F9F85', // Borda Verde
+    width: '100%', height: 50, backgroundColor: '#FFFFFF',
+    borderRadius: 25, borderWidth: 1, borderColor: '#FFD700', 
     paddingHorizontal: 20, marginBottom: 10, color: '#333'
   },
 
-  // Card Objetivos
   cardObjetivos: {
-    width: '100%', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 15,
-    padding: 15, marginBottom: 20, borderWidth: 1, borderColor: '#A555B9'
+    width: '100%', backgroundColor: '#FFFFFF', borderRadius: 15,
+    padding: 15, marginBottom: 20, borderWidth: 1, borderColor: '#FFD700'
   },
-  cardTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  cardTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#2E7D32' },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   checkboxLabel: { marginLeft: 10, fontSize: 14, fontWeight: 'bold', color: '#333' },
 
-  // Seletor Sexo
   sexoContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 10 },
   sexoBtn: { 
-    padding: 10, borderRadius: 50, borderWidth: 2, borderColor: '#A555B9', backgroundColor: '#FFF' 
+    padding: 10, borderRadius: 50, borderWidth: 1, borderColor: '#FFD700', backgroundColor: '#FFFFFF' 
   },
-  sexoBtnSelected: { backgroundColor: '#A555B9' },
-  sexoLabelBox: { backgroundColor: '#FFF', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 15 },
+  sexoBtnSelected: { backgroundColor: '#2E7D32' },
+  sexoLabelBox: { backgroundColor: '#FFFFFF', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 15, borderWidth: 1, borderColor: '#FFD700' },
   sexoText: { fontWeight: 'bold', color: '#333' },
 
   buttonContainer: { width: '100%' },
-  gradientButton: { height: 55, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
+  mainButton: { height: 55, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2E7D32', borderWidth: 1, borderColor: '#FFD700' },
+  buttonText: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' },
 });

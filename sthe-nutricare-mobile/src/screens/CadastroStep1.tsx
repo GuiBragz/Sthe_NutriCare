@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export function CadastroStep1({ navigation }: any) {
   const [nome, setNome] = useState('');
@@ -10,61 +9,61 @@ export function CadastroStep1({ navigation }: any) {
 
   function handleProsseguir() {
     if(!nome || !email || !telefone) {
-      return Alert.alert("Ops!", "Preencha os campos para continuar.");
+      return Alert.alert("Ops", "Preencha os campos para continuar.");
     }
-    // Navega para o passo 2 levando os dados na mala
     navigation.navigate('CadastroStep2', { 
       dadosPasso1: { nome, nascimento, email, telefone } 
     });
   }
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#C8A2C8', '#A555B9']} style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           
-          <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          <Image source={require('../../assets/logo_ss_ss.png')} style={styles.logoMonogram} resizeMode="contain" />
+          <Image source={require('../../assets/logo_stheffane_santos_nutricionista.png')} style={styles.logoText} resizeMode="contain" />
           
-          <Text style={styles.brandTitle}>Sthe<Text style={{color: '#2F9F85'}}>NutriCare</Text></Text>
           <Text style={styles.subtitle}>PRA CRIAR SUA CONTA ME CONTA:</Text>
 
-          {/* INPUTS */}
-          <TextInput style={styles.input} placeholder="NOME COMPLETO" value={nome} onChangeText={setNome} />
-          <TextInput style={styles.input} placeholder="DATA DE NASCIMENTO" value={nascimento} onChangeText={setNascimento} keyboardType="numeric" />
-          <TextInput style={styles.input} placeholder="EMAIL" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <TextInput style={styles.input} placeholder="NUMERO DE TELEFONE" value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" />
+          <TextInput style={styles.input} placeholder="NOME COMPLETO" placeholderTextColor="#666" value={nome} onChangeText={setNome} />
+          <TextInput style={styles.input} placeholder="DATA DE NASCIMENTO" placeholderTextColor="#666" value={nascimento} onChangeText={setNascimento} keyboardType="numeric" />
+          <TextInput style={styles.input} placeholder="EMAIL" placeholderTextColor="#666" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <TextInput style={styles.input} placeholder="NUMERO DE TELEFONE" placeholderTextColor="#666" value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" />
 
-          {/* BOTÃO */}
           <TouchableOpacity onPress={handleProsseguir} style={styles.buttonContainer}>
-            <LinearGradient colors={['#A555B9', '#2F9F85']} start={{x:0, y:0}} end={{x:1, y:1}} style={styles.gradientButton}>
+            <View style={styles.mainButton}>
               <Text style={styles.buttonText}>PROSSEGUIR</Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.goBack()} style={{marginTop: 20}}>
-            <Text style={styles.loginLink}>JÁ TEM CONTA? <Text style={{fontWeight: 'bold'}}>LOGIN</Text></Text>
+            <Text style={styles.loginLink}>JA TEM CONTA? <Text style={{fontWeight: 'bold', color: '#2E7D32'}}>LOGIN</Text></Text>
           </TouchableOpacity>
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#EFEDE7' },
   content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
-  logo: { width: 120, height: 120, marginBottom: 10 },
-  brandTitle: { fontSize: 28, fontWeight: 'bold', color: '#A555B9', marginBottom: 5 },
+  logoMonogram: { width: 90, height: 90, marginBottom: 10 },
+  logoText: { width: 240, height: 70, marginBottom: 20 },
   subtitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 30, textAlign: 'center' },
   
   input: {
-    width: '100%', height: 50, backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: 25, borderWidth: 2, borderColor: '#A555B9', // Borda Roxa
+    width: '100%', height: 50, backgroundColor: '#FFFFFF',
+    borderRadius: 25, borderWidth: 1, borderColor: '#FFD700',
     paddingHorizontal: 20, marginBottom: 15, color: '#333'
   },
   buttonContainer: { width: '100%', marginTop: 10 },
-  gradientButton: { height: 55, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-  loginLink: { color: '#333', fontSize: 12 }
+  mainButton: { 
+    height: 55, borderRadius: 30, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#2E7D32', borderWidth: 1, borderColor: '#FFD700'
+  },
+  buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  loginLink: { color: '#333', fontSize: 14 }
 });

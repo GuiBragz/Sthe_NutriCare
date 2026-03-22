@@ -1,9 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Linking } from 'react-native'; // 👈 Linking já estava aqui, perfeito!
 import api from '../services/api'; 
 
 export function Home({ route, navigation }: any) {
@@ -11,7 +9,6 @@ export function Home({ route, navigation }: any) {
   const [consulta, setConsulta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Busca dados
   const carregarDados = async () => {
     if (!id) return;
     try {
@@ -41,7 +38,7 @@ export function Home({ route, navigation }: any) {
       "Cancelar",
       "Deseja realmente cancelar?",
       [
-        { text: "Não", style: "cancel" },
+        { text: "Nao", style: "cancel" },
         { 
           text: "Sim", style: 'destructive',
           onPress: async () => {
@@ -49,7 +46,7 @@ export function Home({ route, navigation }: any) {
               await api.patch(`/agendamentos/${consulta.id}/cancelar`);
               carregarDados();
             } catch (error) {
-              Alert.alert("Erro", "Não foi possível cancelar.");
+              Alert.alert("Erro", "Nao foi possivel cancelar.");
             }
           }
         }
@@ -66,33 +63,31 @@ export function Home({ route, navigation }: any) {
   };
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#F0E6F5', '#D8BFD8']} style={styles.container}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* CABEÇALHO */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Olá, {nome.split(' ')[0]}! 👋</Text>
-            <Text style={styles.subtitle}>Vamos cuidar de você hoje?</Text>
+            <Text style={styles.greeting}>Ola, {nome.split(' ')[0]}!</Text>
+            <Text style={styles.subtitle}>Vamos cuidar de voce hoje?</Text>
           </View>
           
           <TouchableOpacity 
             onPress={() => navigation.navigate('Perfil', { usuarioId: id })} 
             style={styles.iconBtn}
           >
-            <Ionicons name="person-outline" size={24} color="#A555B9" />
+            <Ionicons name="person-outline" size={24} color="#2E7D32" />
           </TouchableOpacity>
         </View>
 
-        {/* CARD DE PRÓXIMA CONSULTA */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="calendar" size={24} color="#2F9F85" />
-            <Text style={styles.cardTitle}>PRÓXIMA CONSULTA</Text>
+            <Ionicons name="calendar" size={24} color="#FFD700" />
+            <Text style={styles.cardTitle}>PROXIMA CONSULTA</Text>
           </View>
           
           {loading ? (
-            <ActivityIndicator color="#A555B9" style={{marginVertical: 20}} />
+            <ActivityIndicator color="#2E7D32" style={{marginVertical: 20}} />
           ) : consulta ? (
             <View style={styles.consultaInfo}>
               <Text style={styles.dataGrande}>{formatarData(consulta.dataHoraConsulta).dia}</Text>
@@ -102,17 +97,15 @@ export function Home({ route, navigation }: any) {
                 <Text style={styles.badgeText}>{consulta.status.replace('_', ' ')}</Text>
               </View>
 
-              {/* 👇 BOTÃO DO MEET AQUI 👇 */}
               {consulta.tipoConsulta === 'ONLINE' && consulta.linkMeet && (
                 <TouchableOpacity 
                   style={styles.meetBtn}
                   onPress={() => Linking.openURL(consulta.linkMeet)}
                 >
-                  <Ionicons name="videocam" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.meetBtnText}>ENTRAR NA REUNIÃO (MEET)</Text>
+                  <Ionicons name="videocam" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.meetBtnText}>ENTRAR NA REUNIAO</Text>
                 </TouchableOpacity>
               )}
-              {/* 👆 FIM DO BOTÃO DO MEET 👆 */}
               
               <TouchableOpacity style={styles.cancelLink} onPress={handleCancelar}>
                 <Text style={styles.cancelText}>Cancelar agendamento</Text>
@@ -120,86 +113,74 @@ export function Home({ route, navigation }: any) {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Você não tem consultas agendadas.</Text>
+              <Text style={styles.emptyText}>Voce nao tem consultas agendadas.</Text>
             </View>
           )}
         </View>
 
-        {/* --- CARD MEU PLANO ALIMENTAR --- */}
         <TouchableOpacity 
           style={styles.dietCard}
           onPress={() => navigation.navigate('PlanoAlimentar', { usuarioId: id })}
         >
-          <LinearGradient
-            colors={['#FF9966', '#FF5E62']} 
-            start={{x:0, y:0}} end={{x:1, y:1}}
-            style={styles.dietGradient}
-          >
+          <View style={styles.dietGradient}>
             <View>
               <Text style={styles.dietTitle}>MEU PLANO ALIMENTAR</Text>
-              <Text style={styles.dietSub}>Ver o que comer hoje 🍎</Text>
+              <Text style={styles.dietSub}>Ver o que comer hoje</Text>
             </View>
-            <Ionicons name="restaurant-outline" size={32} color="#FFF" />
-          </LinearGradient>
+            <Ionicons name="restaurant-outline" size={32} color="#FFD700" />
+          </View>
         </TouchableOpacity>
         
-        {/* BOTÃO AGENDAR */}
         <TouchableOpacity 
           style={styles.actionButtonContainer}
           onPress={() => navigation.navigate('Agendamento', { usuarioId: id })}
         >
-          <LinearGradient 
-            colors={['#A555B9', '#2F9F85']} 
-            start={{x:0, y:0}} end={{x:1, y:1}} 
-            style={styles.gradientButton}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#FFF" style={{marginRight: 10}} />
+          <View style={styles.gradientButton}>
+            <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" style={{marginRight: 10}} />
             <Text style={styles.buttonText}>AGENDAR NOVA</Text>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
 
-        {/* BOTÃO HISTÓRICO */}
         <TouchableOpacity 
           style={styles.secondaryButton}
           onPress={() => navigation.navigate('Historico', { usuarioId: id })}
         >
-          <Ionicons name="time-outline" size={20} color="#A555B9" style={{marginRight: 8}} />
-          <Text style={styles.secondaryButtonText}>VER MEU HISTÓRICO</Text>
+          <Ionicons name="time-outline" size={20} color="#2E7D32" style={{marginRight: 8}} />
+          <Text style={styles.secondaryButtonText}>VER MEU HISTORICO</Text>
         </TouchableOpacity>
 
       </ScrollView>
       
       <View style={styles.footerDecoration} /> 
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#EFEDE7' },
   content: { padding: 24, paddingTop: 60, paddingBottom: 100 },
   
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 30 },
-  greeting: { fontSize: 28, fontWeight: 'bold', color: '#A555B9' },
+  greeting: { fontSize: 28, fontWeight: 'bold', color: '#2E7D32' },
   subtitle: { fontSize: 16, color: '#666' },
-  iconBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, elevation: 2 },
+  iconBtn: { padding: 10, backgroundColor: '#FFFFFF', borderRadius: 12, elevation: 2 },
 
   card: {
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 15,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 15,
     elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 10 },
-  cardTitle: { color: '#2F9F85', fontWeight: 'bold', fontSize: 14, marginLeft: 10, letterSpacing: 1 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#EFEDE7', paddingBottom: 10 },
+  cardTitle: { color: '#2E7D32', fontWeight: 'bold', fontSize: 14, marginLeft: 10, letterSpacing: 1 },
   
   consultaInfo: { alignItems: 'center' },
   dataGrande: { fontSize: 32, fontWeight: 'bold', color: '#333' },
   horaGrande: { fontSize: 18, color: '#666', marginBottom: 15 },
   
-  badgeContainer: { backgroundColor: '#FFF3E0', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginBottom: 15 },
-  badgeText: { color: '#F57C00', fontWeight: 'bold', fontSize: 12 },
+  badgeContainer: { backgroundColor: '#EFEDE7', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#FFD700' },
+  badgeText: { color: '#2E7D32', fontWeight: 'bold', fontSize: 12 },
 
-  // 👇 ESTILOS DO NOVO BOTÃO DO MEET
   meetBtn: {
-    backgroundColor: '#2F9F85',
+    backgroundColor: '#2E7D32',
     padding: 15,
     borderRadius: 12,
     flexDirection: 'row',
@@ -209,32 +190,35 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     elevation: 2
   },
-  meetBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 },
+  meetBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 },
 
   cancelLink: { padding: 5 },
-  cancelText: { color: '#E83F5B', fontSize: 14 },
+  cancelText: { color: '#D32F2F', fontSize: 14 },
 
   emptyState: { padding: 20, alignItems: 'center' },
   emptyText: { color: '#999', fontStyle: 'italic' },
 
   dietCard: { marginBottom: 15, borderRadius: 20, elevation: 4, overflow: 'hidden' },
-  dietGradient: { padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dietTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  dietSub: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
+  dietGradient: { padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#2E7D32' },
+  dietTitle: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  dietSub: { color: '#EFEDE7', fontSize: 12 },
 
   actionButtonContainer: { marginBottom: 15, elevation: 4 },
   gradientButton: { 
     flexDirection: 'row', height: 60, borderRadius: 30, 
-    alignItems: 'center', justifyContent: 'center' 
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#2E7D32',
+    borderWidth: 1,
+    borderColor: '#FFD700'
   },
-  buttonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+  buttonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
 
   secondaryButton: { 
     flexDirection: 'row', height: 55, borderRadius: 30, 
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#A555B9', backgroundColor: 'transparent'
+    borderWidth: 2, borderColor: '#2E7D32', backgroundColor: 'transparent'
   },
-  secondaryButtonText: { color: '#A555B9', fontWeight: 'bold', fontSize: 14 },
+  secondaryButtonText: { color: '#2E7D32', fontWeight: 'bold', fontSize: 14 },
 
   footerDecoration: { height: 60, width: '100%', opacity: 0.3 }
 });

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // SÓ MUDA AQUI AGORA!
-const MEU_IP = '192.168.1.7'; // IP novo
+const MEU_IP = '192.168.1.6'; // IP novo
 
 const api = axios.create({
   

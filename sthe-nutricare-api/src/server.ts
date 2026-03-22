@@ -17,7 +17,15 @@ import {
   criarHorarioDisponivel,
   listarHorariosDisponiveis
 } from './controllers/AgendamentoController';
-import { buscarPlanoPorUsuario } from './controllers/PlanoController';
+
+// 👇 ATUALIZADO AQUI: Importamos TODAS as funções do Plano
+import { 
+  buscarPlanoPorUsuario, 
+  salvarPlano, 
+  editarPlano, 
+  excluirPlano 
+} from './controllers/PlanoController';
+
 import { 
   criarReceita, 
   listarReceitas, 
@@ -67,10 +75,12 @@ app.patch('/agendamentos/:id/link', atualizarLinkMeet);
 
 
 // --- ROTAS DE PLANO ALIMENTAR ---
+app.post('/planos', salvarPlano);
 app.get('/planos/:usuarioId', buscarPlanoPorUsuario);
+// 👇 AS DUAS NOVAS ROTAS AQUI!
+app.put('/planos/:id', editarPlano);
+app.delete('/planos/:id', excluirPlano);
 
-
-// 👇 AS ROTAS DE RECEITAS QUE FALTAVAM AQUI! 👇
 
 // --- ROTAS DE RECEITAS (FEED E CRUD) ---
 app.post('/receitas', criarReceita);

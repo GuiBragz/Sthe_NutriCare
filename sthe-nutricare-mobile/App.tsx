@@ -24,6 +24,7 @@ import { Desempenho } from './src/screens/Desempenho';
 import { NutriDashboard } from './src/screens/NutriDashboard';
 import { NutriPacientes } from './src/screens/NutriPacientes';
 import { NutriIdeias } from './src/screens/NutriIdeias'; // 👈 IMPORTADO AQUI
+import { NutriCriarPlano } from './src/screens/NutriCriarPlano';
 
 // Telas Secundárias (Abrem por cima das abas)
 import { Agendamento } from './src/screens/Agendamento';
@@ -145,6 +146,7 @@ export default function App() {
         <Stack.Screen name="NutriTabs" component={NutriTabs} />
 
         {/* Telas Comuns */}
+        <Stack.Screen name="NutriCriarPlano" component={NutriCriarPlano} />
         <Stack.Screen name="Agendamento" component={Agendamento} />
         <Stack.Screen name="Historico" component={Historico} />
         <Stack.Screen name="Perfil" component={Perfil} />
