@@ -1,9 +1,28 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { enviarNotificacao } from '../services/NotificacaoService';
 
 const ENDERECO_CONSULTORIO = "Av. Boa Viagem, 1234, Sala 101 - Recife/PE";
 
-// 1. PACIENTE: RESERVAR UM AGENDAMENTO (Atualizado)
+const gatewayPagamento = {
+  estornarPix: async (agendamentoId: number, valor: any) => {
+    return true;
+  },
+  estornarCartao: async (agendamentoId: number, valor: any) => {
+    return true;
+  }
+};
+
+async function processarEstornoGateway(agendamentoId: number, formaPagamento: string | null, valor: any) {
+  if (!valor || !formaPagamento) return;
+  
+  if (formaPagamento === 'PIX') {
+    await gatewayPagamento.estornarPix(agendamentoId, valor);
+  } else if (formaPagamento === 'CARTAO') {
+    await gatewayPagamento.estornarCartao(agendamentoId, valor);
+  }
+}
+
 export const criarAgendamento = async (req: Request, res: Response) => {
   try {
     const { usuarioId, dataHora, formaPagamento, tipoConsulta } = req.body;
@@ -12,20 +31,18 @@ export const criarAgendamento = async (req: Request, res: Response) => {
       return res.status(400).json({ erro: 'Dados incompletos para agendamento.' });
     }
 
-    // O PULO DO GATO: Procura se a Nutricionista abriu essa vaga exata
     const vagaDisponivel = await prisma.agendamento.findFirst({
       where: {
         dataHoraConsulta: new Date(dataHora),
         tipoConsulta: tipoConsulta,
-        status: 'DISPONIVEL' // Só pega se estiver livre!
+        status: 'DISPONIVEL'
       }
     });
 
     if (!vagaDisponivel) {
-      return res.status(404).json({ erro: 'Este horário não está disponível. A Nutricionista não liberou esta vaga ou já foi ocupada.' });
+      return res.status(404).json({ erro: 'Este horario nao esta disponivel.' });
     }
 
-    // Atualiza a vaga existente, colocando o ID do paciente nela
     const agendamentoConfirmado = await prisma.agendamento.update({
       where: { id: vagaDisponivel.id },
       data: {
@@ -33,8 +50,17 @@ export const criarAgendamento = async (req: Request, res: Response) => {
         formaPagamento: formaPagamento,
         valorPago: 150.00,
         status: 'AGENDADO'
-      }
+      },
+      include: { usuario: true }
     });
+
+    if (agendamentoConfirmado.usuario?.pushToken) {
+      await enviarNotificacao(
+        agendamentoConfirmado.usuario.pushToken,
+        "Consulta Agendada",
+        `Sua consulta foi marcada para ${new Date(dataHora).toLocaleString('pt-BR')}`
+      );
+    }
 
     return res.status(200).json({
       mensagem: 'Agendamento realizado com sucesso!',
@@ -42,12 +68,10 @@ export const criarAgendamento = async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error("Erro ao criar agendamento:", error);
     return res.status(500).json({ erro: 'Erro interno ao realizar agendamento.' });
   }
 };
 
-// 2. BUSCAR PRÓXIMA CONSULTA
 export const buscarProximaConsulta = async (req: Request, res: Response) => {
   try {
     const { usuarioId } = req.params;
@@ -58,7 +82,7 @@ export const buscarProximaConsulta = async (req: Request, res: Response) => {
       where: {
         usuarioId: Number(usuarioId),
         dataHoraConsulta: { gte: hoje },
-        status: { notIn: ['CANCELADO', 'DISPONIVEL'] } // Pega as que já são do paciente
+        status: { notIn: ['CANCELADO', 'DISPONIVEL'] }
       },
       orderBy: { dataHoraConsulta: 'asc' }
     });
@@ -74,12 +98,10 @@ export const buscarProximaConsulta = async (req: Request, res: Response) => {
   }
 };
 
-// 3. CANCELAR AGENDAMENTO
 export const cancelarAgendamento = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    // Quando cancela, a vaga volta a ficar disponível sem dono
     await prisma.agendamento.update({
       where: { id: Number(id) },
       data: { 
@@ -96,7 +118,6 @@ export const cancelarAgendamento = async (req: Request, res: Response) => {
   }
 };
 
-// 4. LISTAR HISTÓRICO (Do Paciente)
 export const listarHistorico = async (req: Request, res: Response) => {
   try {
     const { usuarioId } = req.params;
@@ -106,11 +127,10 @@ export const listarHistorico = async (req: Request, res: Response) => {
     });
     return res.json(lista);
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro ao buscar histórico.' });
+    return res.status(500).json({ erro: 'Erro ao buscar historico.' });
   }
 };
 
-// 5. ATUALIZAR LINK DO MEET (Para a Nutri usar)
 export const atualizarLinkMeet = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -118,8 +138,17 @@ export const atualizarLinkMeet = async (req: Request, res: Response) => {
 
         const agendamento = await prisma.agendamento.update({
             where: { id: Number(id) },
-            data: { linkMeet: link }
+            data: { linkMeet: link },
+            include: { usuario: true }
         });
+
+        if (agendamento.usuario?.pushToken) {
+          await enviarNotificacao(
+            agendamento.usuario.pushToken,
+            "Link da Consulta Online",
+            "A nutricionista adicionou o link do Google Meet para a sua consulta."
+          );
+        }
 
         return res.json({ mensagem: "Link salvo!", agendamento });
     } catch (error) {
@@ -127,12 +156,11 @@ export const atualizarLinkMeet = async (req: Request, res: Response) => {
     }
 };
 
-// 6. LISTAR TODOS AGENDAMENTOS (Para a Agenda da Nutri)
 export const listarTodosAgendamentos = async (req: Request, res: Response) => {
     try {
         const lista = await prisma.agendamento.findMany({
             where: { status: { not: 'CANCELADO' } },
-            include: { usuario: true }, // Traz o nome do paciente junto se tiver
+            include: { usuario: true },
             orderBy: { dataHoraConsulta: 'asc' }
         });
         return res.json(lista);
@@ -141,18 +169,14 @@ export const listarTodosAgendamentos = async (req: Request, res: Response) => {
     }
 };
 
-// 👇 NOVAS FUNÇÕES ABAIXO 👇
-
-// 7. NUTRI: CRIAR HORÁRIO LIVRE
 export const criarHorarioDisponivel = async (req: Request, res: Response) => {
   try {
     const { dataHora, tipoConsulta } = req.body;
 
     if (!dataHora) {
-      return res.status(400).json({ erro: 'Data e hora são obrigatórios.' });
+      return res.status(400).json({ erro: 'Data e hora sao obrigatorios.' });
     }
 
-    // Verifica se já não existe uma vaga nesse exato momento
     const jaExiste = await prisma.agendamento.findFirst({
       where: {
         dataHoraConsulta: new Date(dataHora),
@@ -161,7 +185,7 @@ export const criarHorarioDisponivel = async (req: Request, res: Response) => {
     });
 
     if (jaExiste) {
-      return res.status(400).json({ erro: 'Já existe um registro neste horário.' });
+      return res.status(400).json({ erro: 'Ja existe um registro neste horario.' });
     }
 
     const novoHorario = await prisma.agendamento.create({
@@ -173,24 +197,21 @@ export const criarHorarioDisponivel = async (req: Request, res: Response) => {
       }
     });
 
-    return res.status(201).json({ mensagem: 'Horário liberado!', novoHorario });
+    return res.status(201).json({ mensagem: 'Horario liberado!', novoHorario });
   } catch (error) {
     return res.status(500).json({ erro: 'Erro ao criar vaga.' });
   }
 };
 
-// 8. PACIENTE: LISTAR HORÁRIOS LIVRES
 export const listarHorariosDisponiveis = async (req: Request, res: Response) => {
   try {
-    const { tipo } = req.query; // Para filtrar 'ONLINE' ou 'PRESENCIAL'
+    const { tipo } = req.query;
     const hoje = new Date();
 
     const vagas = await prisma.agendamento.findMany({
       where: {
         status: 'DISPONIVEL',
-        dataHoraConsulta: { gt: hoje }, // Só pega vagas no futuro
-        
-        // 👇 A CORREÇÃO ESTÁ AQUI: "as 'ONLINE' | 'PRESENCIAL'"
+        dataHoraConsulta: { gt: hoje },
         tipoConsulta: tipo ? (String(tipo) as 'ONLINE' | 'PRESENCIAL') : undefined 
       },
       orderBy: { dataHoraConsulta: 'asc' }
@@ -199,5 +220,42 @@ export const listarHorariosDisponiveis = async (req: Request, res: Response) => 
     return res.json(vagas);
   } catch (error) {
     return res.status(500).json({ erro: 'Erro ao listar vagas.' });
+  }
+};
+
+export const atualizarStatusConsulta = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const agendamento = await prisma.agendamento.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!agendamento) {
+      return res.status(404).json({ erro: "Agendamento nao encontrado" });
+    }
+
+    if (status === 'FALTOU' && agendamento.status !== 'FALTOU') {
+      await processarEstornoGateway(agendamento.id, agendamento.formaPagamento, agendamento.valorPago);
+    }
+
+    const agendamentoAtualizado = await prisma.agendamento.update({
+      where: { id: Number(id) },
+      data: { status },
+      include: { usuario: true }
+    });
+
+    if (agendamentoAtualizado.usuario?.pushToken) {
+      await enviarNotificacao(
+        agendamentoAtualizado.usuario.pushToken,
+        "Atualizacao na Consulta",
+        `O status da sua consulta mudou para: ${status}`
+      );
+    }
+
+    return res.json(agendamentoAtualizado);
+  } catch (error) {
+    return res.status(500).json({ erro: "Erro ao atualizar o status do agendamento" });
   }
 };

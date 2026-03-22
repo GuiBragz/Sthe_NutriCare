@@ -49,7 +49,6 @@ export function NutriPacientes() {
     <View style={styles.container}>
       <Text style={styles.title}>Meus Pacientes</Text>
 
-      {/* BARRA DE PESQUISA */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#B8860B" style={{marginLeft: 15}} />
         <TextInput 
@@ -66,7 +65,6 @@ export function NutriPacientes() {
         )}
       </View>
       
-      {/* LISTA DE PACIENTES */}
       {loading && pacientes.length === 0 ? (
         <ActivityIndicator size="large" color="#2E7D32" style={{marginTop: 50}} />
       ) : (
@@ -93,7 +91,6 @@ export function NutriPacientes() {
         />
       )}
 
-      {/* --- MODAL FICHA DO PACIENTE --- */}
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -129,17 +126,31 @@ export function NutriPacientes() {
 
                 <Text style={styles.sectionTitle}>Objetivos</Text>
                 <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>{pacienteSelecionado.objetivos || 'Não preenchido'}</Text>
+                  <Text style={styles.infoText}>{pacienteSelecionado.objetivos || 'Nao preenchido'}</Text>
                 </View>
 
                 <Text style={styles.sectionTitle}>Contato</Text>
                 <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>📱 {pacienteSelecionado.telefone || 'Não preenchido'}</Text>
+                  <Text style={styles.infoText}>{pacienteSelecionado.telefone || 'Nao preenchido'}</Text>
                 </View>
 
                 <TouchableOpacity style={styles.btnDieta} onPress={irParaCriarDieta}>
                   <Ionicons name="document-text" size={20} color="#FFF" style={{marginRight: 10}}/>
                   <Text style={styles.btnDietaText}>CRIAR PLANO ALIMENTAR</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.btnDieta, { backgroundColor: '#B8860B', marginTop: 10, marginBottom: 20 }]} 
+                  onPress={() => {
+                    setModalVisible(false);
+                    navigation.navigate('NutriDesempenhoPaciente', { 
+                      pacienteId: pacienteSelecionado.id, 
+                      pacienteNome: pacienteSelecionado.nomeCompleto 
+                    });
+                  }}
+                >
+                  <Ionicons name="stats-chart" size={20} color="#FFF" style={{marginRight: 10}}/>
+                  <Text style={styles.btnDietaText}>VER DESEMPENHO</Text>
                 </TouchableOpacity>
 
               </ScrollView>
@@ -185,7 +196,6 @@ const styles = StyleSheet.create({
   nome: { fontWeight: 'bold', fontSize: 16, color: '#333' },
   email: { color: '#666', fontSize: 12 },
 
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { 
     backgroundColor: '#EFEDE7', 
@@ -210,6 +220,6 @@ const styles = StyleSheet.create({
   infoBox: { backgroundColor: '#FFF', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#FFD700' },
   infoText: { fontSize: 14, color: '#555' },
 
-  btnDieta: { backgroundColor: '#2E7D32', flexDirection: 'row', padding: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 30, marginBottom: 20 },
+  btnDieta: { backgroundColor: '#2E7D32', flexDirection: 'row', padding: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
   btnDietaText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });

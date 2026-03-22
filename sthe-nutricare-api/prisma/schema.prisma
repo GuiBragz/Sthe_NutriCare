@@ -1,40 +1,32 @@
-// Isso define que vamos usar Javascript/Typescript e MySQL
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql" // Se estiver usando SQLite no mobile local, mude para "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-// --- TABELAS DO SISTEMA ---
-
 model Usuario {
-  id            Int         @id @default(autoincrement())
-  nomeCompleto  String
-  email         String      @unique
-  senha         String
-  tipo          TipoUsuario @default(PACIENTE)
-  telefone      String?
-  fotoPerfilUrl String?
-  
-  // --- NOVOS CAMPOS DO CADASTRO ---
-  dataNascimento String?
-  sexo           String?   // "M" ou "F"
-  altura         Float?    // ex: 1.75
-  objetivos      String?   // ex: "SAUDE,EMAGRECER"
-  // -------------------------------
+  id                Int                 @id @default(autoincrement())
+  nomeCompleto      String
+  email             String              @unique
+  senha             String
+  tipo              TipoUsuario         @default(PACIENTE)
+  telefone          String?
+  fotoPerfilUrl     String?
+  dataNascimento    String?
+  sexo              String?
+  altura            Float?
+  objetivos         String?
+  termosAceitos     Boolean             @default(true)
+  dataCriacao       DateTime            @default(now())
+  pushToken         String?
 
-  dataCriacao    DateTime @default(now())
-
-  // Relacionamentos
-  agendamentos    Agendamento[]
-  metas           MetaSaude?
-  diarios         DiarioDiario[]
-  planos          PlanoNutricional[]
-
-  // 👇 RELACIONAMENTOS DE INTERAÇÃO COM RECEITAS 👇
+  agendamentos      Agendamento[]
+  metas             MetaSaude?
+  diarios           DiarioDiario[]
+  planos            PlanoNutricional[]
   likesReceitas     ReceitaLike[]
   receitasFavoritas ReceitaFavorita[]
   comentarios       ComentarioReceita[]
@@ -44,63 +36,54 @@ model Usuario {
 
 model MetaSaude {
   id                 Int     @id @default(autoincrement())
-  usuarioId          Int     @unique // Um usuario só tem uma meta ativa
+  usuarioId          Int     @unique
   usuario            Usuario @relation(fields: [usuarioId], references: [id])
   pesoAtual          Float
   pesoMeta           Float
-  // Altura removida daqui pois agora fica no Usuario
-  metaCaloricaDiaria Int // ex: 2000 kcal
-  metaAguaDiaria     Int // ex: 2500 ml
+  metaCaloricaDiaria Int
+  metaAguaDiaria     Int
 
   @@map("tb_metas_saude")
 }
 
 model Agendamento {
-  id               Int      @id @default(autoincrement())
-  
-  // 👇 AGORA SÃO OPCIONAIS (Tem o ponto de interrogação ?)
+  id               Int               @id @default(autoincrement())
   usuarioId        Int?
-  usuario          Usuario? @relation(fields: [usuarioId], references: [id])
-  formaPagamento   FormaPagamento? 
-  valorPago        Decimal?  @db.Decimal(10, 2)
-
+  usuario          Usuario?          @relation(fields: [usuarioId], references: [id])
+  formaPagamento   FormaPagamento?
+  valorPago        Decimal?          @db.Decimal(10, 2)
   dataHoraConsulta DateTime
-  status           StatusAgendamento @default(DISPONIVEL) // 👇 O PADRÃO AGORA É DISPONÍVEL
+  status           StatusAgendamento @default(DISPONIVEL)
   observacoes      String?
-
-  // NOVOS CAMPOS ADICIONADOS
-  tipoConsulta     TipoConsulta @default(PRESENCIAL)
-  linkMeet         String?      // Link do Google Meet (Só se for online)
-  endereco         String?      // Endereço do consultório (Só se for presencial)
+  tipoConsulta     TipoConsulta      @default(PRESENCIAL)
+  linkMeet         String?
+  endereco         String?
 
   @@map("tb_agendamentos")
 }
 
 model PlanoNutricional {
-  id          Int      @id @default(autoincrement())
-  usuarioId   Int
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-  titulo      String
-  arquivoUrl  String?  // Link do PDF
-  descricao   String?  // Texto se não tiver PDF
-  dataUpload  DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  titulo     String
+  arquivoUrl String?
+  descricao  String?  @db.Text
+  dataUpload DateTime @default(now())
 
   @@map("tb_planos_nutricionais")
 }
 
-// 👇 TABELA DE RECEITAS ATUALIZADA 👇
 model Receita {
-  id             Int    @id @default(autoincrement())
+  id             Int                 @id @default(autoincrement())
   titulo         String
-  ingredientes   String @db.Text
-  modoPreparo    String @db.Text
+  ingredientes   String              @db.Text
+  modoPreparo    String              @db.Text
   caloriasTotais Int
   fotoUrl        String?
-  categoria      String // ex: "Cafe da Manha"
-  
-  dataCriacao    DateTime @default(now()) // Novo campo para ordenar o "Feed"
+  categoria      String
+  dataCriacao    DateTime            @default(now())
 
-  // Relacionamentos com as interações
   comentarios    ComentarioReceita[]
   likes          ReceitaLike[]
   favoritos      ReceitaFavorita[]
@@ -108,27 +91,25 @@ model Receita {
   @@map("tb_receitas")
 }
 
-// 👇 NOVAS TABELAS DE INTERAÇÃO (LIKE, FAVORITO, COMENTÁRIO) 👇
-
 model ReceitaLike {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   usuarioId Int
   receitaId Int
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
-  receita   Receita  @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  receita   Receita @relation(fields: [receitaId], references: [id], onDelete: Cascade)
 
-  @@unique([usuarioId, receitaId]) // Garante que 1 usuário só dá 1 like por receita
+  @@unique([usuarioId, receitaId])
   @@map("tb_receita_likes")
 }
 
 model ReceitaFavorita {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   usuarioId Int
   receitaId Int
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
-  receita   Receita  @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  receita   Receita @relation(fields: [receitaId], references: [id], onDelete: Cascade)
 
-  @@unique([usuarioId, receitaId]) // Garante que 1 usuário só favorita 1 vez
+  @@unique([usuarioId, receitaId])
   @@map("tb_receita_favoritas")
 }
 
@@ -136,7 +117,6 @@ model ComentarioReceita {
   id          Int      @id @default(autoincrement())
   texto       String   @db.Text
   dataCriacao DateTime @default(now())
-  
   usuarioId   Int
   receitaId   Int
   usuario     Usuario  @relation(fields: [usuarioId], references: [id])
@@ -146,23 +126,39 @@ model ComentarioReceita {
 }
 
 model DiarioDiario {
-  id                 Int      @id @default(autoincrement())
+  id                 Int        @id @default(autoincrement())
   usuarioId          Int
-  usuario            Usuario  @relation(fields: [usuarioId], references: [id])
-  dataRegistro       DateTime @default(now())
-  caloriasConsumidas Int
-  caloriasQueimadas  Int
-  aguaConsumida      Int      // em ml
-  observacoesDia     String?
+  usuario            Usuario    @relation(fields: [usuarioId], references: [id])
+  dataRegistro       DateTime   @default(now())
+  layoutUsado        TipoLayout @default(SIMPLES)
+  pesoAtual          Float?
+  caloriasConsumidas Int        @default(0)
+  caloriasQueimadas  Int        @default(0)
+  aguaConsumida      Int        @default(0)
+  observacoesDia     String?    @db.Text
+
+  refeicoes          Refeicao[]
 
   @@map("tb_diario_diario")
 }
 
-// --- ENUMS (Opções fixas) ---
+model Refeicao {
+  id           Int          @id @default(autoincrement())
+  diarioId     Int
+  diario       DiarioDiario @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+  nome         String
+  calorias     Int          @default(0)
+  detalhes     String?      @db.Text
+  proteinas    Float?
+  carboidratos Float?
+  gorduras     Float?
+
+  @@map("tb_refeicoes")
+}
 
 enum TipoUsuario {
   ADMIN
-  NUTRICIONISTA  // Adicionado
+  NUTRICIONISTA
   PACIENTE
 }
 
@@ -172,16 +168,22 @@ enum FormaPagamento {
 }
 
 enum StatusAgendamento {
-  DISPONIVEL           // 👈 NOVO STATUS (Horário livre criado pela nutri)
+  DISPONIVEL
   AGUARDANDO_PAGAMENTO
-  AGENDADO             
+  AGENDADO
   CONFIRMADO
   REALIZADO
+  FALTOU
   CANCELADO_COM_CREDITO
   CANCELADO
 }
 
-enum TipoConsulta { // Novo Enum
+enum TipoConsulta {
   ONLINE
   PRESENCIAL
+}
+
+enum TipoLayout {
+  SIMPLES
+  COMPLEXO
 }
