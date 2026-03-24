@@ -1,47 +1,61 @@
-import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
+import { Request, Response } from "express";
+import { prisma } from "../lib/prisma";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
 export const criarUsuario = async (req: Request, res: Response) => {
   try {
-    const { nome, email, senha, telefone, nascimento, altura, sexo, objetivos } = req.body;
+    const {
+      nome,
+      email,
+      senha,
+      telefone,
+      nascimento,
+      altura,
+      sexo,
+      objetivos,
+    } = req.body;
 
     if (!nome || !email || !senha) {
-      return res.status(400).json({ erro: 'Preencha os campos obrigatorios!' });
+      return res.status(400).json({ erro: "Preencha os campos obrigatorios!" });
     }
 
     const usuarioExiste = await prisma.usuario.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (usuarioExiste) {
-      return res.status(400).json({ erro: 'E-mail ja cadastrado.' });
+      return res.status(400).json({ erro: "E-mail ja cadastrado." });
     }
+
+    const senhaCriptografada = await bcrypt.hash(senha, 10);
 
     const novoUsuario = await prisma.usuario.create({
       data: {
         nomeCompleto: nome,
         email,
-        senha,
+        senha: senhaCriptografada,
         telefone,
         dataNascimento: nascimento,
         sexo,
-        altura: altura ? parseFloat(altura) : null, 
+        altura: altura ? parseFloat(altura) : null,
         objetivos,
-        tipo: 'PACIENTE'
-      }
+        tipo: "PACIENTE",
+      },
     });
 
     return res.status(201).json({
-      mensagem: 'Usuario criado com sucesso!',
+      mensagem: "Usuario criado com sucesso!",
       usuario: {
         id: novoUsuario.id,
         nome: novoUsuario.nomeCompleto,
-        email: novoUsuario.email
-      }
+        email: novoUsuario.email,
+      },
     });
-
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro interno no servidor' });
+    return res.status(500).json({ erro: "Erro interno no servidor" });
   }
 };
 
@@ -50,25 +64,35 @@ export const login = async (req: Request, res: Response) => {
     const { email, senha } = req.body;
 
     const usuario = await prisma.usuario.findUnique({
-      where: { email }
+      where: { email },
     });
 
-    if (!usuario || usuario.senha !== senha) {
-      return res.status(401).json({ erro: 'Email ou senha incorretos' });
+    if (!usuario) {
+      return res.status(401).json({ erro: "Email ou senha incorretos" });
     }
 
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+    if (!senhaValida) {
+      return res.status(401).json({ erro: "Email ou senha incorretos" });
+    }
+
+    const token = jwt.sign({ id: usuario.id, tipo: usuario.tipo }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
     return res.json({
-      mensagem: 'Login realizado!',
+      mensagem: "Login realizado!",
+      token,
       usuario: {
         id: usuario.id,
         nome: usuario.nomeCompleto,
         email: usuario.email,
-        tipo: usuario.tipo
-      }
+        tipo: usuario.tipo,
+      },
     });
-
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro interno no servidor' });
+    return res.status(500).json({ erro: "Erro interno no servidor" });
   }
 };
 
@@ -77,25 +101,25 @@ export const buscarUsuarioPorId = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const usuario = await prisma.usuario.findUnique({
-      where: { id: Number(id) }
+      where: { id: Number(id) },
     });
 
     if (!usuario) {
-      return res.status(404).json({ erro: 'Usuario nao encontrado' });
+      return res.status(404).json({ erro: "Usuario nao encontrado" });
     }
 
     const { senha, ...dadosUsuario } = usuario;
 
     return res.json(dadosUsuario);
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro ao buscar perfil' });
+    return res.status(500).json({ erro: "Erro ao buscar perfil" });
   }
 };
 
 export const atualizarUsuario = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { nome, telefone, altura, objetivos, sexo, nascimento } = req.body; 
+    const { nome, telefone, altura, objetivos, sexo, nascimento } = req.body;
 
     const usuarioAtualizado = await prisma.usuario.update({
       where: { id: Number(id) },
@@ -105,13 +129,13 @@ export const atualizarUsuario = async (req: Request, res: Response) => {
         altura: altura ? parseFloat(altura) : undefined,
         objetivos,
         sexo,
-        dataNascimento: nascimento
-      }
+        dataNascimento: nascimento,
+      },
     });
 
     return res.json(usuarioAtualizado);
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro ao atualizar perfil' });
+    return res.status(500).json({ erro: "Erro ao atualizar perfil" });
   }
 };
 
@@ -121,10 +145,10 @@ export const buscarPacientes = async (req: Request, res: Response) => {
 
     const pacientes = await prisma.usuario.findMany({
       where: {
-        tipo: 'PACIENTE',
+        tipo: "PACIENTE",
         nomeCompleto: {
-          contains: busca ? String(busca) : '',
-        }
+          contains: busca ? String(busca) : "",
+        },
       },
       select: {
         id: true,
@@ -135,14 +159,14 @@ export const buscarPacientes = async (req: Request, res: Response) => {
         altura: true,
         dataNascimento: true,
         objetivos: true,
-        dataCriacao: true
+        dataCriacao: true,
       },
-      orderBy: { nomeCompleto: 'asc' }
+      orderBy: { nomeCompleto: "asc" },
     });
 
     return res.json(pacientes);
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro ao buscar pacientes.' });
+    return res.status(500).json({ erro: "Erro ao buscar pacientes." });
   }
 };
 
@@ -153,11 +177,13 @@ export const salvarPushToken = async (req: Request, res: Response) => {
 
     const usuario = await prisma.usuario.update({
       where: { id: Number(id) },
-      data: { pushToken: token }
+      data: { pushToken: token },
     });
-    
+
     return res.json({ success: true, pushToken: usuario.pushToken });
   } catch (error) {
-    return res.status(500).json({ erro: 'Erro ao salvar o token de notificacao' });
+    return res
+      .status(500)
+      .json({ erro: "Erro ao salvar o token de notificacao" });
   }
 };
